@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Pedido de Compra</title>
+  </head>
+  <body>
+    <div class="page">
+      <header class="container-header">
+        <div class="container-logo">
+          <img
+            src="../assets/Imagens/logo-veikonv-vetorizado.png"
+            alt="Logo da empresa Veikon Engenharia" />
+        </div>
+        <div class="container-dados-veikon">
+          <h1 class="font-headline font-bold text-lg text-on-surface mb-1">
+            VEIKON EQUIPAMENTOS E SERVIÇOS LTDA
+          </h1>
+          <p><span class="font-semibold">CNPJ:</span> 19.309.792/0001-09</p>
+          <p><span class="font-semibold">IE:</span> 714.079.490.113</p>
+          <p>Rua Joana Fabri Thomé 442, Santa Claudina</p>
+          <p>Vinhedo - SP, CEP: 13284-432</p>
+          <p><span class="font-semibold">Telefone:</span> (19) 3846-6802</p>
+        </div>
+      </header>
+      <hr />
+      <form>
+        <h1>PEDIDO DE COMPRA</h1>
+        <div class="container-numdata">
+          <div class="column">
+            <label for="numPedido">NO. DO PEDIDO</label>
+            <input type="text" id="numPedido" name="num_pedido" />
+          </div>
+          <div class="column">
+            <label for="dataPedido">DATA DO PEDIDO</label>
+            <input type="date" id="dataPedido" name="data_pedido" />
+          </div>
+        </div>
+        <div class="container-fornecedor-condicoes">
+          <div class="column-fornecedor-condicoes">
+            <h2>DADOS DO FORNECEDOR</h2>
+            <hr />
+            <label for="fornecedor">FORNECEDOR</label>
+            <select id="fornecedor" name="fornecedor_id"></select>
+            <div class="container-multiple-inputs">
+              <div class="input-group">
+                <label for="cnpj">CNPJ</label>
+                <input
+                  type="text"
+                  id="cnpj"
+                  name="cnpj"
+                  placeholder="00.000.000/0000-00"
+                  readonly />
+              </div>
+              <div class="input-group">
+                <label for="ie">IE</label>
+                <input
+                  type="text"
+                  id="ie"
+                  name="ie"
+                  placeholder="Inscrição Estadual"
+                  readonly />
+              </div>
+            </div>
+            <div class="input-group">
+              <label for="rua">RUA / ENDEREÇO</label>
+              <input
+                type="text"
+                id="rua"
+                name="rua"
+                placeholder="Rua, Número"
+                readonly />
+            </div>
+            <div class="container-multiple-inputs">
+              <div class="input-group">
+                <label for="bairro">BAIRRO</label>
+                <input type="text" id="bairro" name="bairro" readonly />
+              </div>
+              <div class="input-group">
+                <label for="cidade">CIDADE</label>
+                <input type="text" id="cidade" name="cidade" readonly />
+              </div>
+              <div class="input-group div-estado">
+                <label for="estado">ESTADO</label>
+                <input
+                  type="text"
+                  id="estado"
+                  name="estado"
+                  placeholder="UF"
+                  readonly />
+              </div>
+            </div>
+          </div>
+          <div class="column-fornecedor-condicoes">
+            <h2>CONDIÇÕES COMERCIAIS</h2>
+            <hr />
+            <label for="prazoEntrega">PRAZO DE ENTREGA</label>
+            <input
+              type="text"
+              id="prazoEntrega"
+              name="prazo_entrega"
+              placeholder="Ex: 15 dias úteis" />
+            <label for="numProposta">NO. DA PROPOSTA</label>
+            <input
+              type="text"
+              id="numProposta"
+              name="num_proposta"
+              placeholder="Referência da Proposta" />
+            <label for="condPagamento">CONDIÇÃO DE PAGAMENTO</label>
+            <input
+              type="text"
+              id="condPagamento"
+              name="cond_pagamento"
+              placeholder="Faturado 30 dias" />
+            <div class="total_geral">
+              <span>TOTAL GERAL</span>
+              <span id="total-geral">R$ -</span>
+            </div>
+          </div>
+        </div>
+        <table id="itens-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>ITEM</th>
+              <th>QTD</th>
+              <th>DESCRIÇÃO</th>
+              <th>UNID.</th>
+              <th>UNITÁRIO (R$)</th>
+              <th>IPI (%)</th>
+              <th>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox" class="row-select" /></td>
+              <td>1</td>
+              <td contenteditable="true" class="quantidade"></td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true"></td>
+              <td contenteditable="true" class="val-unitario"></td>
+              <td contenteditable="true" class="ipi"></td>
+              <td class="total-linha"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <button type="button" id="add-row">+</button>
+        <button type="button" id="delete-row">🗑️</button>
+        <div class="container-footer">
+          <label for="observações">OBSERVAÇÕES:</label>
+          <input
+            type="text"
+            id="observações"
+            name="observações"
+            placeholder="Informações adicionais sobre o pedido, restrições de horário, etc." />
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="aplicacao">APLICAÇÃO:</label>
+              <input
+                type="text"
+                id="aplicacao"
+                name="aplicacao"
+                placeholder="Setor ou Projeto específico" />
+            </div>
+            <div class="input-group">
+              <label for="enderecoEntrega">ENDEREÇO DE ENTREGA</label>
+              <input
+                type="text"
+                id="enderecoEntrega"
+                name="endereco_entrega"
+                placeholder="Mesmo da Matriz (Rua Joana Fabri Thomé 442)" />
+            </div>
+          </div>
+          <div class="responsavel-compra">
+            <h2>RESPONSÁVEL PELA COMPRA</h2>
+            <div class="container-multiple-inputs">
+              <div class="input-group">
+                <p>COMPRADOR</p>
+                <p>-</p>
+              </div>
+              <div class="input-group">
+                <p>EMAIL</p>
+                <p>-</p>
+              </div>
+              <div class="input-group">
+                <p>TELEFONE</p>
+                <p>-</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+      <div class="footer-disclaimer">
+        <p>VEIKON ERP</p>
+        <p>DOCUMENTO GERADO ELETRONICAMENTE</p>
+      </div>
+    </div>
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/formFornecedores.js"></script>
+  </body>
+</html>

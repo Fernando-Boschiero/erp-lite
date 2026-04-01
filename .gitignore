@@ -1,0 +1,15 @@
+# Database
+*.db
+
+# Environment variables
+.env
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+#Personal file
+AI prompts.txt

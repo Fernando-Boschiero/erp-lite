@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Gerenciamento de Fornecedores</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>Gerenciamento de Fornecedores</h1>
+      <ul class="tabs">
+        <li data-tab-target="#consulta" class="active tab">Consulta</li>
+        <li data-tab-target="#cadastro" class="tab">Cadastro / Atualização</li>
+      </ul>
+
+      <!-- HTML PARA ABA CONSULTAR FORNECEDOR -->
+      <div class="tab-content">
+        <div id="consulta" data-tab-content class="active">
+          <h2>Buscar Fornecedor</h2>
+          <input
+            type="text"
+            id="busca"
+            placeholder="Buscar por razão social, CNPJ, endereço..." />
+          <table id="tabela-fornecedores">
+            <thead>
+              <tr>
+                <th>Razão Social</th>
+                <th>CNPJ</th>
+                <th>Rua</th>
+                <th>Bairro</th>
+                <th>Cidade</th>
+                <th>Estado</th>
+                <th>CEP</th>
+                <th>Telefone</th>
+                <th>Ativo</th>
+              </tr>
+            </thead>
+            <tbody id="resultado-busca"></tbody>
+          </table>
+        </div>
+
+        <!-- HTML PARA ABA CADASTRAR/ATUALIZAR FORNECEDOR -->
+
+        <div id="cadastro" data-tab-content>
+          <div class="column-fornecedor-condicoes">
+            <div>
+              <h2>Cadastrar/Atualizar Fornecedor</h2>
+              <div class="mode-buttons">
+                <button type="button" id="btn-register" class="active-mode">
+                  Cadastrar
+                </button>
+                <button type="button" id="btn-update">Atualizar</button>
+              </div>
+
+              <!-- Only visible in update mode -->
+              <div id="select-fornecedor-container" style="display: none">
+                <label for="fornecedor">FORNECEDOR</label>
+                <select id="fornecedor"></select>
+              </div>
+            </div>
+            <hr />
+            <form id="form-fornecedor">
+              <h3>Dados da Empresa</h3>
+              <label for="cadastro-fornecedor">FORNECEDOR</label>
+              <input
+                type="text"
+                id="cadastro-fornecedor"
+                name="cadastro_fornecedor"
+                placeholder="Nome do Fornecedor" />
+              <div class="container-multiple-inputs">
+                <div class="input-group">
+                  <label for="cnpj">CNPJ</label>
+                  <input
+                    type="text"
+                    id="cnpj"
+                    name="cnpj"
+                    placeholder="00.000.000/0000-00" />
+                </div>
+                <div class="input-group">
+                  <label for="ie">IE</label>
+                  <input
+                    type="number"
+                    id="ie"
+                    name="ie"
+                    placeholder="Inscrição Estadual" />
+                </div>
+              </div>
+
+              <h3>Endereço & Contato</h3>
+              <div class="input-group">
+                <label for="rua">RUA / ENDEREÇO</label>
+                <input
+                  type="text"
+                  id="rua"
+                  name="rua"
+                  placeholder="Rua, Número" />
+              </div>
+              <div class="container-multiple-inputs">
+                <div class="input-group">
+                  <label for="bairro">BAIRRO</label>
+                  <input type="text" id="bairro" name="bairro" />
+                </div>
+                <div class="input-group">
+                  <label for="cidade">CIDADE</label>
+                  <input type="text" id="cidade" name="cidade" />
+                </div>
+                <div class="input-group div-estado">
+                  <label for="estado">ESTADO</label>
+                  <input
+                    type="text"
+                    id="estado"
+                    name="estado"
+                    placeholder="UF" />
+                </div>
+              </div>
+              <div class="container-multiple-inputs">
+                <div class="input-group">
+                  <label for="cep">CEP</label>
+                  <input type="text" id="cep" name="cep" />
+                </div>
+                <div class="input-group">
+                  <label for="telefone">TELEFONE</label>
+                  <input type="text" id="telefone" name="telefone" />
+                </div>
+              </div>
+              <button type="button" id="btn-submit">CADASTRAR</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/gerenciamentoFornecedores.js"></script>
+  </body>
+</html>

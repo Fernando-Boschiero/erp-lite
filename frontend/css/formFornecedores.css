@@ -1,0 +1,311 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --font-main: "Inter", sans-serif;
+  --font-size-base: 0.85rem;
+  --font-color-form: hsl(0, 0%, 28%);
+  --form-color-input: hsl(0 0% 65% / 0.2);
+  --table-color-header: hsl(0 0% 65% / 0.4);
+  --h1: 1.3rem;
+  --h2: 1rem;
+  --h3: 0.761rem;
+  --color-primary: hsl(145, 100%, 16%);
+  --color-secondary: hsl(145 100% 25% / 0.1);
+}
+
+body {
+  font-family: var(--font-main);
+  font-size: var(--font-size-base);
+  height: auto;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+}
+
+.page {
+  margin: 10mm 0;
+  width: 210mm; /* largura exata do A4 */
+  min-height: 297mm; /* altura mínima do A4 */
+  padding: 10mm; /* margem interna */
+  box-sizing: border-box; /* padding não aumenta o tamanho */
+  /* border: 1px solid black; */
+  box-shadow:
+    2px 2px 1px var(--form-color-input),
+    -2px 2px 1px var(--form-color-input),
+    -2px -2px 1px var(--form-color-input),
+    2px -2px 1px var(--form-color-input);
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+/* CSS FOR THE HEADER SECTION */
+
+.container-header {
+  width: 100%;
+  height: auto;
+  display: flex;
+}
+
+.container-logo {
+  width: 30%;
+  height: auto;
+  display: flex;
+  align-items: center;
+}
+
+.container-logo img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.container-dados-veikon {
+  text-align: right;
+  width: 70%;
+  height: auto;
+  line-height: 1.2rem;
+}
+
+.container-dados-veikon h1 {
+  font-size: var(--h1);
+  margin-bottom: 8px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--color-primary);
+  margin: 5mm auto;
+  width: 90%;
+}
+
+/* CSS FOR THE FORM */
+
+form {
+  font-weight: 600;
+  width: 100%;
+  height: auto;
+}
+
+form h1 {
+  text-align: center;
+}
+
+form input,
+form select {
+  margin-top: 2mm;
+  margin-bottom: 2mm;
+  border: none;
+  background-color: var(--form-color-input);
+  border-radius: 1px;
+  height: 2.5rem;
+  padding-left: 10px;
+  font-size: var(--font-size-base);
+}
+
+.container-numdata {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-top: 5mm;
+  width: 100%;
+  flex: 1;
+}
+
+#numPedido {
+  text-transform: uppercase;
+}
+
+#dataPedido {
+  padding-right: 20px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  color: var(--font-color-form);
+  flex: 1;
+}
+
+.column input {
+  margin-top: 2mm;
+  margin-bottom: 2mm;
+  border: none;
+  border-bottom: 0.1mm solid var(--color-primary);
+  text-align: center;
+}
+
+.container-fornecedor-condicoes hr {
+  border: none;
+  border-top: 1px solid var(--color-primary);
+  margin: 5mm 0;
+  width: 90%;
+}
+
+.container-fornecedor-condicoes > .column-fornecedor-condicoes {
+  flex: 1;
+}
+
+.container-fornecedor-condicoes {
+  display: flex;
+  gap: 25px;
+  margin-top: 10mm;
+  width: 100%;
+}
+
+.column-fornecedor-condicoes {
+  display: flex;
+  flex-direction: column;
+  color: var(--font-color-form);
+  min-width: 0;
+}
+
+.container-multiple-inputs > .input-group {
+  flex: 1;
+}
+
+.container-multiple-inputs {
+  display: flex;
+  width: 100%;
+  gap: 2mm;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.container-multiple-inputs > .div-estado {
+  flex: 0.4;
+}
+
+.total_geral {
+  margin-top: 2mm;
+  color: var(--color-primary);
+  border: 0.2mm solid var(--color-primary);
+  background-color: var(--color-secondary);
+  border-radius: 1px;
+  height: 4rem;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+/* //CSS FOR THE TABLE */
+
+table {
+  margin-top: 10mm;
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  height: 2.5rem;
+}
+
+th {
+  background-color: var(--table-color-header);
+  text-align: center;
+}
+
+th:nth-of-type(4) {
+  text-align: left;
+}
+
+td {
+  border: 0.1mm solid var(--table-color-header);
+}
+
+.container-footer {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10mm;
+  width: 100%;
+}
+
+.container-footer > input:first-of-type {
+  height: 4rem;
+}
+
+.responsavel-compra {
+  margin-top: 5mm;
+  height: 8rem;
+  background-color: var(--form-color-input);
+  padding: 5mm;
+  border-radius: 5px;
+}
+
+.responsavel-compra h2 {
+  font-size: var(--h2);
+  margin-bottom: 10px;
+}
+
+.footer-disclaimer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: auto;
+  color: var(--table-color-header);
+}
+
+/* CSS for Gerenciamento de Fornecedores */
+
+[data-tab-content] {
+  display: none;
+}
+
+.active[data-tab-content] {
+  display: block;
+}
+
+.tabs {
+  display: flex;
+  justify-content: space-around;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid black;
+}
+
+.tab {
+  cursor: pointer;
+  padding: 10px;
+}
+
+.tab.active {
+  background-color: #ccc;
+}
+
+.tab:hover {
+  background-color: #aaa;
+}
+
+.tab-content {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+/* impressão */
+
+@page {
+  size: A4;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: none;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  .page {
+    margin: 0;
+    box-shadow: none;
+  }
+}
