@@ -10,6 +10,10 @@
   --font-color-form: hsl(0, 0%, 28%);
   --form-color-input: hsl(0 0% 65% / 0.2);
   --table-color-header: hsl(0 0% 65% / 0.4);
+  --primary-button-gradient: hsl(148, 100%, 27%);
+  --secondary-button-gradient: hsl(148, 100%, 41%);
+  --secondary-button-color: hsl(0 0% 80% / 0.2);
+  --secondary-background-color: hsl(0 0% 80% / 0.1);
   --h1: 1.3rem;
   --h2: 1rem;
   --h3: 0.761rem;
@@ -97,7 +101,8 @@ form h1 {
 }
 
 form input,
-form select {
+form select,
+.consulta-controls > input {
   margin-top: 2mm;
   margin-bottom: 2mm;
   border: none;
@@ -210,6 +215,7 @@ table {
 th {
   background-color: var(--table-color-header);
   text-align: center;
+  height: 1.5rem;
 }
 
 th:nth-of-type(4) {
@@ -218,6 +224,10 @@ th:nth-of-type(4) {
 
 td {
   border: 0.1mm solid var(--table-color-header);
+}
+
+td:nth-of-type(1) {
+  max-width: 300px;
 }
 
 .container-footer {
@@ -251,7 +261,21 @@ td {
   color: var(--table-color-header);
 }
 
-/* CSS for Gerenciamento de Fornecedores */
+/* CSS FOR THE GERENCIAMENTO FORNECEDORES PAGE */
+
+.gerenciamento-container {
+  width: 80%;
+  margin-top: 50px;
+  height: auto;
+  background-color: var(--secondary-background-color);
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow:
+    2px 2px 1px var(--form-color-input),
+    -2px 2px 1px var(--form-color-input),
+    -2px -2px 1px var(--form-color-input),
+    2px -2px 1px var(--form-color-input);
+}
 
 [data-tab-content] {
   display: none;
@@ -261,31 +285,74 @@ td {
   display: block;
 }
 
+#form-fornecedor h2 {
+  font-size: var(--h2);
+  margin-bottom: 10px;
+}
+
 .tabs {
   display: flex;
-  justify-content: space-around;
+  justify-content: left;
   list-style-type: none;
-  margin: 0;
-  padding: 0;
-  border-bottom: 1px solid black;
+  margin: 20px 0;
 }
 
 .tab {
   cursor: pointer;
-  padding: 10px;
+  padding: 15px;
+  border-radius: 5px;
+  margin-right: 5px;
+  margin: 0.1mm solid var(--form-color-input);
 }
 
 .tab.active {
-  background-color: #ccc;
+  background: linear-gradient(
+    to right bottom,
+    var(--primary-button-gradient),
+    var(--secondary-button-gradient)
+  );
 }
 
 .tab:hover {
-  background-color: #aaa;
+  background-color: var(--form-color-input);
 }
 
 .tab-content {
   margin-left: 20px;
   margin-right: 20px;
+}
+
+.tab-content button {
+  cursor: pointer;
+  color: black;
+  font-weight: 600;
+  padding: 15px;
+  border-radius: 5px;
+  border: none;
+  margin-right: 5px;
+  background: linear-gradient(
+    to right bottom,
+    var(--primary-button-gradient),
+    var(--secondary-button-gradient)
+  );
+}
+
+.column-toggles input {
+  margin-left: 5px;
+}
+
+#busca {
+  width: 400px;
+  margin-bottom: 20px;
+}
+
+.mode-buttons {
+  background-color: linear-gradient(
+    to right bottom,
+    var(--primary-button-gradient),
+    var(--secondary-button-gradient)
+  );
+  margin-top: 10px;
 }
 
 /* impressão */

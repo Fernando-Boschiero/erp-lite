@@ -29,7 +29,7 @@ function normalizarTexto(texto) {
 function renderizarTabela(lista) {
   resultadoBusca.innerHTML = "";
   if (lista.length === 0) {
-    resultadoBusca.innerHTML = `<tr><td colspan="9">Nenhum fornecedor encontrado.</td></tr>`;
+    resultadoBusca.innerHTML = `<tr><td colspan="10">Nenhum fornecedor encontrado.</td></tr>`;
     return;
   }
   lista.forEach((f) => {
@@ -43,11 +43,72 @@ function renderizarTabela(lista) {
       <td>${f.estado}</td>
       <td>${f.cep}</td>
       <td>${f.telefone}</td>
-      <td>${f.is_active}</td>
+      <td>
+        <select class="toggle-ativo" data-id="${f.id}">
+          <option value="1" ${f.is_active == 1 ? "selected" : ""}>Ativo</option>
+          <option value="0" ${f.is_active == 0 ? "selected" : ""}>Inativo</option>
+        </select>
+      </td>
+      <td><span class="delete-icon" data-id="${f.id}">🗑️</span></td>
     `;
     resultadoBusca.appendChild(tr);
   });
+
+  // apply current column visibility after rendering
+  applyColumnVisibility();
 }
+
+const columnToggles = document.querySelectorAll(
+  "#column-toggles input[type='checkbox']",
+);
+
+function applyColumnVisibility() {
+  columnToggles.forEach((checkbox) => {
+    const colIndex = parseInt(checkbox.dataset.column);
+    const isVisible = checkbox.checked;
+
+    // toggle header
+    document.querySelectorAll("#tabela-fornecedores thead tr th")[
+      colIndex
+    ].style.display = isVisible ? "" : "none";
+
+    // toggle cells in each row
+    document.querySelectorAll("#resultado-busca tr").forEach((row) => {
+      if (row.cells[colIndex])
+        row.cells[colIndex].style.display = isVisible ? "" : "none";
+    });
+  });
+}
+
+columnToggles.forEach((checkbox) => {
+  checkbox.addEventListener("change", applyColumnVisibility);
+});
+
+resultadoBusca.addEventListener("click", async (e) => {
+  if (e.target.classList.contains("delete-icon")) {
+    const id = e.target.dataset.id;
+    if (!confirm("Tem certeza que deseja excluir este fornecedor?")) return;
+
+    await fetch(`http://localhost:3000/fornecedores/${id}`, {
+      method: "DELETE",
+    });
+    await carregarFornecedores();
+    renderizarTabela(fornecedores);
+  }
+});
+
+resultadoBusca.addEventListener("change", async (e) => {
+  if (e.target.classList.contains("toggle-ativo")) {
+    const id = e.target.dataset.id;
+    const isActive = e.target.value;
+
+    await fetch(`http://localhost:3000/fornecedores/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+});
 
 function buscarFornecedor(termo) {
   const termoNormalizado = normalizarTexto(termo);

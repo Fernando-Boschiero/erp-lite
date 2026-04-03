@@ -66,6 +66,32 @@ app.put("/fornecedores/:id", (req, res) => {
   res.json({ success: true });
 });
 
+// PATCH - toggle active/inactive
+app.patch("/fornecedores/:id/status", (req, res) => {
+  const { is_active } = req.body;
+  try {
+    db.prepare(`UPDATE fornecedores SET is_active = ? WHERE id = ?`).run(
+      is_active,
+      req.params.id,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - soft delete (marks as inactive)
+app.delete("/fornecedores/:id", (req, res) => {
+  try {
+    db.prepare(`UPDATE fornecedores SET is_active = 0 WHERE id = ?`).run(
+      req.params.id,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

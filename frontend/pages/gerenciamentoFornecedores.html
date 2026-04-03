@@ -13,7 +13,7 @@
   </head>
   <body>
     <div class="gerenciamento-container">
-      <h1>Gerenciamento de Fornecedores</h1>
+      <h1>GERENCIAMENTO DE FORNECEDORES</h1>
       <ul class="tabs">
         <li data-tab-target="#consulta" class="active tab">Consulta</li>
         <li data-tab-target="#cadastro" class="tab">Cadastro / Atualização</li>
@@ -23,10 +23,45 @@
       <div class="tab-content">
         <div id="consulta" data-tab-content class="active">
           <h2>Buscar Fornecedor</h2>
-          <input
-            type="text"
-            id="busca"
-            placeholder="Buscar por razão social, CNPJ, endereço..." />
+          <div class="consulta-controls">
+            <input
+              type="text"
+              id="busca"
+              placeholder="Buscar por razão social, CNPJ, endereço..." />
+
+            <div id="column-toggles" class="column-toggles">
+              <label
+                ><input type="checkbox" data-column="0" checked /> Razão
+                Social</label
+              >
+
+              <label
+                ><input type="checkbox" data-column="1" checked /> CNPJ</label
+              >
+              <label
+                ><input type="checkbox" data-column="2" checked /> Rua</label
+              >
+              <label
+                ><input type="checkbox" data-column="3" checked /> Bairro</label
+              >
+              <label
+                ><input type="checkbox" data-column="4" checked /> Cidade</label
+              >
+              <label
+                ><input type="checkbox" data-column="5" checked /> Estado</label
+              >
+              <label
+                ><input type="checkbox" data-column="6" checked /> CEP</label
+              >
+              <label
+                ><input type="checkbox" data-column="7" checked />
+                Telefone</label
+              >
+              <label
+                ><input type="checkbox" data-column="8" checked /> Ativo</label
+              >
+            </div>
+          </div>
           <table id="tabela-fornecedores">
             <thead>
               <tr>
@@ -39,6 +74,7 @@
                 <th>CEP</th>
                 <th>Telefone</th>
                 <th>Ativo</th>
+                <th>Apagar</th>
               </tr>
             </thead>
             <tbody id="resultado-busca"></tbody>
@@ -66,13 +102,15 @@
             </div>
             <hr />
             <form id="form-fornecedor">
-              <h3>Dados da Empresa</h3>
-              <label for="cadastro-fornecedor">FORNECEDOR</label>
-              <input
-                type="text"
-                id="cadastro-fornecedor"
-                name="cadastro_fornecedor"
-                placeholder="Nome do Fornecedor" />
+              <h2>Dados da Empresa</h2>
+              <div class="input-group">
+                <label for="cadastro-fornecedor">FORNECEDOR</label>
+                <input
+                  type="text"
+                  id="cadastro-fornecedor"
+                  name="cadastro_fornecedor"
+                  placeholder="Nome do Fornecedor" />
+              </div>
               <div class="container-multiple-inputs">
                 <div class="input-group">
                   <label for="cnpj">CNPJ</label>
@@ -92,7 +130,7 @@
                 </div>
               </div>
 
-              <h3>Endereço & Contato</h3>
+              <h2>Endereço & Contato</h2>
               <div class="input-group">
                 <label for="rua">RUA / ENDEREÇO</label>
                 <input
