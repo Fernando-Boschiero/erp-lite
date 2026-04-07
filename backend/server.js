@@ -92,6 +92,178 @@ app.delete("/fornecedores/:id", (req, res) => {
   }
 });
 
+// GET - fetch all orders (joins supplier name for convenience)
+// JOIN means: for each pedido, also grab the razao_social from fornecedores where ids match
+app.get("/pedidos", (req, res) => {
+  const rows = db
+    .prepare(
+      `
+    SELECT pedidos.*, fornecedores.razao_social
+    FROM pedidos
+    JOIN fornecedores ON pedidos.fornecedor_id = fornecedores.id
+  `,
+    )
+    .all();
+  res.json(rows);
+});
+
+// GET - fetch one order with all its line items
+app.get("/pedidos/:id", (req, res) => {
+  const pedido = db
+    .prepare(`SELECT * FROM pedidos WHERE id = ?`)
+    .get(req.params.id);
+
+  if (!pedido) return res.status(404).json({ error: "Pedido não encontrado." });
+
+  // fetch all line items belonging to this order
+  const itens = db
+    .prepare(`SELECT * FROM pedido_itens WHERE pedido_id = ?`)
+    .all(req.params.id);
+
+  // send back the order and its items together
+  res.json({ ...pedido, itens });
+});
+
+// POST - create a new order with its line items
+app.post("/pedidos", (req, res) => {
+  const {
+    num_pedido,
+    data_pedido,
+    fornecedor_id,
+    prazo_entrega,
+    num_proposta,
+    cond_pagamento,
+    observacoes,
+    aplicacao,
+    endereco_entrega,
+    itens, // itens is an array of line items
+  } = req.body;
+
+  try {
+    // use a transaction so that if anything fails, nothing gets saved
+    // either everything saves or nothing does
+    const transaction = db.transaction(() => {
+      const result = db
+        .prepare(
+          `
+        INSERT INTO pedidos (num_pedido, data_pedido, fornecedor_id, prazo_entrega,
+          num_proposta, cond_pagamento, observacoes, aplicacao, endereco_entrega)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+        )
+        .run(
+          num_pedido,
+          data_pedido,
+          fornecedor_id,
+          prazo_entrega,
+          num_proposta,
+          cond_pagamento,
+          observacoes,
+          aplicacao,
+          endereco_entrega,
+        );
+
+      const pedidoId = result.lastInsertRowid; // id of the order we just created
+
+      // loop through each line item and insert it linked to this order
+      for (const item of itens) {
+        db.prepare(
+          `
+          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          pedidoId,
+          item.item,
+          item.quantidade,
+          item.descricao,
+          item.unidade,
+          item.val_unitario,
+          item.ipi,
+          item.total,
+        );
+      }
+    });
+
+    transaction(); // execute the transaction
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message.includes("UNIQUE constraint failed: pedidos.num_pedido")) {
+      res.status(409).json({ error: "Um pedido com este número já existe." });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// PUT - update an existing order and replace its line items
+app.put("/pedidos/:id", (req, res) => {
+  const {
+    num_pedido,
+    data_pedido,
+    fornecedor_id,
+    prazo_entrega,
+    num_proposta,
+    cond_pagamento,
+    observacoes,
+    aplicacao,
+    endereco_entrega,
+    itens,
+  } = req.body;
+
+  try {
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `
+        UPDATE pedidos SET num_pedido=?, data_pedido=?, fornecedor_id=?,
+          prazo_entrega=?, num_proposta=?, cond_pagamento=?, observacoes=?,
+          aplicacao=?, endereco_entrega=?, updated_at=datetime('now')
+        WHERE id=?
+      `,
+      ).run(
+        num_pedido,
+        data_pedido,
+        fornecedor_id,
+        prazo_entrega,
+        num_proposta,
+        cond_pagamento,
+        observacoes,
+        aplicacao,
+        endereco_entrega,
+        req.params.id,
+      );
+
+      // delete existing items and reinsert — simplest way to handle edits
+      db.prepare(`DELETE FROM pedido_itens WHERE pedido_id = ?`).run(
+        req.params.id,
+      );
+
+      for (const item of itens) {
+        db.prepare(
+          `
+          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          req.params.id,
+          item.item,
+          item.quantidade,
+          item.descricao,
+          item.unidade,
+          item.val_unitario,
+          item.ipi,
+          item.total,
+        );
+      }
+    });
+
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
