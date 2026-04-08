@@ -290,6 +290,10 @@ td:nth-of-type(1) {
   margin-bottom: 10px;
 }
 
+.atualizar-fornecedor-dropdown {
+  margin-top: 15px;
+}
+
 .tabs {
   display: flex;
   justify-content: left;
