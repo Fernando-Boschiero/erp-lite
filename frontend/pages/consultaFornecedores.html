@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Consulta de Fornecedores</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>CONSULTA DE FORNECEDORES</h1>
+      <div class="consulta-controls">
+        <input
+          type="text"
+          id="busca"
+          placeholder="Buscar por razão social, CNPJ, endereço..." />
+        <div id="column-toggles" class="column-toggles">
+          <label
+            ><input type="checkbox" data-column="0" checked /> Razão
+            Social</label
+          >
+          <label><input type="checkbox" data-column="1" checked /> CNPJ</label>
+          <label><input type="checkbox" data-column="2" checked /> Rua</label>
+          <label
+            ><input type="checkbox" data-column="3" checked /> Bairro</label
+          >
+          <label
+            ><input type="checkbox" data-column="4" checked /> Cidade</label
+          >
+          <label
+            ><input type="checkbox" data-column="5" checked /> Estado</label
+          >
+          <label><input type="checkbox" data-column="6" checked /> CEP</label>
+          <label
+            ><input type="checkbox" data-column="7" checked /> Telefone</label
+          >
+          <label><input type="checkbox" data-column="8" checked /> Ativo</label>
+        </div>
+      </div>
+      <table id="tabela-fornecedores">
+        <thead>
+          <tr>
+            <th>Razão Social</th>
+            <th>CNPJ</th>
+            <th>Rua</th>
+            <th>Bairro</th>
+            <th>Cidade</th>
+            <th>Estado</th>
+            <th>CEP</th>
+            <th>Telefone</th>
+            <th>Ativo</th>
+            <th>Apagar</th>
+          </tr>
+        </thead>
+        <tbody id="resultado-busca"></tbody>
+      </table>
+    </div>
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/consultaFornecedores.js"></script>
+  </body>
+</html>
