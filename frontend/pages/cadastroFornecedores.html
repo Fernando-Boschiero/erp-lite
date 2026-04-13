@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Cadastro de Fornecedores</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>CADASTRO DE FORNECEDORES</h1>
+      <div class="column-fornecedor-condicoes">
+        <div>
+          <div class="mode-buttons">
+            <button type="button" id="btn-register" class="active-mode">
+              Cadastrar
+            </button>
+            <button type="button" id="btn-update">Atualizar</button>
+          </div>
+          <div id="select-fornecedor-container" style="display: none">
+            <label for="fornecedor">FORNECEDOR</label>
+            <select id="fornecedor"></select>
+          </div>
+        </div>
+        <hr />
+        <form id="form-fornecedor">
+          <h2>Dados da Empresa</h2>
+          <div class="input-group">
+            <label for="cadastro-fornecedor">FORNECEDOR</label>
+            <input
+              type="text"
+              id="cadastro-fornecedor"
+              name="cadastro_fornecedor"
+              placeholder="Nome do Fornecedor" />
+          </div>
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="cnpj">CNPJ</label>
+              <input
+                type="text"
+                id="cnpj"
+                name="cnpj"
+                placeholder="00.000.000/0000-00" />
+            </div>
+            <div class="input-group">
+              <label for="ie">IE</label>
+              <input
+                type="number"
+                id="ie"
+                name="ie"
+                placeholder="Inscrição Estadual" />
+            </div>
+          </div>
+          <h2>Endereço & Contato</h2>
+          <div class="input-group">
+            <label for="rua">RUA / ENDEREÇO</label>
+            <input type="text" id="rua" name="rua" placeholder="Rua, Número" />
+          </div>
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="bairro">BAIRRO</label>
+              <input type="text" id="bairro" name="bairro" />
+            </div>
+            <div class="input-group">
+              <label for="cidade">CIDADE</label>
+              <input type="text" id="cidade" name="cidade" />
+            </div>
+            <div class="input-group div-estado">
+              <label for="estado">ESTADO</label>
+              <input type="text" id="estado" name="estado" placeholder="UF" />
+            </div>
+          </div>
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="cep">CEP</label>
+              <input type="text" id="cep" name="cep" />
+            </div>
+            <div class="input-group">
+              <label for="telefone">TELEFONE</label>
+              <input type="text" id="telefone" name="telefone" />
+            </div>
+          </div>
+          <button type="button" id="btn-submit">CADASTRAR</button>
+        </form>
+      </div>
+    </div>
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/cadastroFornecedores.js"></script>
+  </body>
+</html>

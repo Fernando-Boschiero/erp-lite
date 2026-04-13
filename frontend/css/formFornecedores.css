@@ -19,6 +19,7 @@
   --h3: 0.761rem;
   --color-primary: hsl(145, 100%, 16%);
   --color-secondary: hsl(145 100% 25% / 0.1);
+  --container-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
 
 body {
@@ -36,12 +37,8 @@ body {
   min-height: 297mm; /* altura mínima do A4 */
   padding: 10mm; /* margem interna */
   box-sizing: border-box; /* padding não aumenta o tamanho */
-  /* border: 1px solid black; */
-  box-shadow:
-    2px 2px 1px var(--form-color-input),
-    -2px 2px 1px var(--form-color-input),
-    -2px -2px 1px var(--form-color-input),
-    2px -2px 1px var(--form-color-input);
+  position: relative;
+  box-shadow: var(--container-shadow);
 }
 
 .font-semibold {
@@ -264,17 +261,13 @@ td:nth-of-type(1) {
 /* CSS FOR THE GERENCIAMENTO FORNECEDORES PAGE */
 
 .gerenciamento-container {
-  width: 80%;
-  margin-top: 50px;
+  width: 90%;
+  margin-top: 30px;
   height: auto;
   background-color: var(--secondary-background-color);
   padding: 10px;
   border-radius: 5px;
-  box-shadow:
-    2px 2px 1px var(--form-color-input),
-    -2px 2px 1px var(--form-color-input),
-    -2px -2px 1px var(--form-color-input),
-    2px -2px 1px var(--form-color-input);
+  box-shadow: var(--container-shadow);
 }
 
 [data-tab-content] {
@@ -357,26 +350,4 @@ td:nth-of-type(1) {
     var(--secondary-button-gradient)
   );
   margin-top: 10px;
-}
-
-/* impressão */
-
-@page {
-  size: A4;
-  margin: 10mm;
-}
-
-@media print {
-  body {
-    background: none;
-  }
-
-  .no-print {
-    display: none;
-  }
-
-  .page {
-    margin: 0;
-    box-shadow: none;
-  }
 }

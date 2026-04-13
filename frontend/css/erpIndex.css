@@ -34,6 +34,7 @@ aside {
   grid-area: aside;
   padding-left: 10px;
   font-size: var(--h2);
+  border-right: 1px solid var(--table-color-header);
 }
 
 aside ul {
@@ -42,7 +43,14 @@ aside ul {
   list-style: none;
 }
 
+aside a:link,
+aside a:visited {
+  text-decoration: none;
+  color: black;
+}
+
 .aside-list {
+  position: relative;
   margin-top: 10px;
   display: flex;
   align-items: center;
@@ -50,11 +58,49 @@ aside ul {
   cursor: pointer;
   padding-left: 5px;
   transition: transform 0.2s ease;
+  width: fit-content;
+}
+
+.aside-list::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 12px;
+  height: 100%;
+}
+
+.submenu {
+  position: absolute;
+  font-size: var(--font-size-base);
+  top: 0;
+  left: 100%;
+  transform: translateY(-30%);
+  display: none;
+  background: white;
+  padding: 5px;
+  list-style: none;
+  min-width: 250px;
+  margin-left: 8px;
+}
+
+.submenu li {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.submenu li:hover {
+  background: #eee;
 }
 
 .aside-list:hover {
   /* background-color: var(--secondary-button-color); */
   transform: translateX(5px) scale(1.02);
+}
+
+.aside-list:hover .submenu,
+.submenu:hover {
+  display: block;
 }
 
 .icon {
@@ -67,5 +113,4 @@ aside ul {
 main {
   grid-area: main;
   padding-left: 10px;
-  background-color: lightskyblue;
 }

@@ -84,6 +84,22 @@
               </g>
             </svg>
             Fornecedores
+            <ul class="submenu">
+              <li>
+                <a
+                  class="nav-link"
+                  data-page="../pages/consultaFornecedores.html"
+                  >Consultar Fornecedores</a
+                >
+              </li>
+              <li>
+                <a
+                  class="nav-link"
+                  data-page="../pages/cadastroFornecedores.html"
+                  >Cadastrar / Atualizar Fornecedor</a
+                >
+              </li>
+            </ul>
           </li>
           <li class="aside-list">
             <svg
@@ -97,7 +113,13 @@
           </li>
         </ul>
       </aside>
-      <main>Some text</main>
+      <main id="main-content">
+        <iframe
+          id="content-frame"
+          src=""
+          style="width: 100%; height: 100%; border: none"></iframe>
+      </main>
     </div>
+    <script type="module" src="../js/erpIndex.js"></script>
   </body>
 </html>
