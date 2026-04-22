@@ -282,10 +282,39 @@ function buildPayload() {
 // currentCotacaoId is set when loading an existing cotação for editing
 let currentCotacaoId = null;
 
+function atualizarOpcoesStatus(statusAtual) {
+  const transicoesPermitidas = {
+    Criada: ["Em Análise Técnica", "Cancelada"],
+    "Em Análise Técnica": ["Em Análise Financeira", "Criada", "Cancelada"],
+    "Em Análise Financeira": [
+      "Enviado ao Cliente",
+      "Em Análise Técnica",
+      "Cancelada",
+    ],
+    "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
+    Aceita: ["Pausada", "Cancelada"],
+    Pausada: ["Aceita", "Cancelada"],
+    Recusada: [],
+    Cancelada: [],
+  };
+
+  const permitidas = transicoesPermitidas[statusAtual] || [];
+  const select = document.getElementById("statusSelect");
+
+  // clear and repopulate options
+  select.innerHTML = `<option value="${statusAtual}">${statusAtual}</option>`;
+  permitidas.forEach((s) => {
+    const option = document.createElement("option");
+    option.value = s;
+    option.textContent = s;
+    select.appendChild(option);
+  });
+}
+
 function setReadOnly(isReadOnly) {
-  // disables all inputs when viewing a sent cotação
+  // disables all inputs except for statusSelect and alteradoPor
   const inputs = document.querySelectorAll(
-    "#form-cotacao input:not([readonly]), #form-cotacao select",
+    "#form-cotacao input:not([readonly]):not(#alteradoPor):not(#observacaoStatus), #form-cotacao select:not(#statusSelect)",
   );
   inputs.forEach((el) => (el.disabled = isReadOnly));
   quillDescricao.enable(!isReadOnly);
@@ -450,6 +479,7 @@ async function carregarCotacao(id) {
   document.getElementById("moeda").value = cotacao.moeda || "BRL";
   document.getElementById("objetivo").value = cotacao.objetivo || "";
   document.getElementById("statusSelect").value = cotacao.status;
+  atualizarOpcoesStatus(cotacao.status);
   document.getElementById("comprador").value = cotacao.comprador || "";
   document.getElementById("compradorEmail").value =
     cotacao.comprador_email || "";
@@ -483,6 +513,9 @@ const cotacaoIdFromUrl = urlParams.get("id");
 if (cotacaoIdFromUrl) {
   currentCotacaoId = parseInt(cotacaoIdFromUrl);
   carregarCotacao(currentCotacaoId);
+} else {
+  // new cotação — set initial status options
+  atualizarOpcoesStatus("Criada");
 }
 
 const btnImprimir = document.getElementById("btn-imprimir");

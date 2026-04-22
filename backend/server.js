@@ -6,9 +6,41 @@ const puppeteer = require("puppeteer");
 
 // import database connection
 const db = require("./db/db");
-
 const fs = require("fs");
 const path = require("path");
+
+const multer = require("multer");
+const { v4: uuidv4 } = require("crypto");
+const fsSync = require("fs");
+const uploadDir = path.join(__dirname, "../backend/uploads/pedidos");
+
+// create uploads folder if it doesn't exist
+if (!fsSync.existsSync(uploadDir)) {
+  fsSync.mkdirSync(uploadDir, { recursive: true });
+}
+
+// multer config - stores files with a unique name to avoid conflicts
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20mb limit
+  fileFilter: (req, file, cb) => {
+    const allowed = ["application/pdf", "image/jpeg", "image/png"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Tipo de arquivo não permitido. Use PDF, JPG ou PNG."));
+    }
+  },
+});
 
 // create an express app (your server)
 const app = express();
@@ -18,8 +50,14 @@ const PORT = 3000;
 
 // middleware - parse incoming JSON requests
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, "../frontend")));
+
+// Função para formatar a data em PT-BR
+function formatarData(dataStr) {
+  if (!dataStr) return "-";
+  const [ano, mes, dia] = dataStr.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
 
 // GET - fetch all active suppliers
 app.get("/fornecedores", (req, res) => {
@@ -388,6 +426,30 @@ app.patch("/cotacoes/:id/status", (req, res) => {
     if (!current)
       return res.status(404).json({ error: "Cotação não encontrada." });
 
+    // define allowed transitions
+    const transicoesPermitidas = {
+      Criada: ["Em Análise Técnica", "Cancelada"],
+      "Em Análise Técnica": ["Em Análise Financeira", "Criada", "Cancelada"],
+      "Em Análise Financeira": [
+        "Enviado ao Cliente",
+        "Em Análise Técnica",
+        "Cancelada",
+      ],
+      "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
+      Aceita: ["Pausada", "Cancelada"],
+      Pausada: ["Aceita", "Cancelada"],
+      Recusada: [],
+      Cancelada: [],
+    };
+
+    const permitidas = transicoesPermitidas[current.status] || [];
+
+    if (!permitidas.includes(status_novo)) {
+      return res.status(403).json({
+        error: `Não é possível mudar o status de "${current.status}" para "${status_novo}".`,
+      });
+    }
+
     const transaction = db.transaction(() => {
       // update status
       db.prepare(
@@ -536,9 +598,7 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       .all(req.params.id);
 
     const revisao = cotacao.revisao == 0 ? "Rev.0" : `Rev.${cotacao.revisao}`;
-    const dataFormatada = cotacao.data_cotacao
-      ? new Date(cotacao.data_cotacao).toLocaleDateString("pt-BR")
-      : "-";
+    const dataFormatada = formatarData(cotacao.data_cotacao);
 
     // LOGO
     const logoPath = path.join(
@@ -780,6 +840,669 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="COT-${cotacao.num_cotacao}-${revisao}.pdf"`,
+    });
+    res.send(pdf);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch all pedidos
+app.get("/pedidos", (req, res) => {
+  const rows = db
+    .prepare(
+      `
+    SELECT pedidos.*, fornecedores.razao_social
+    FROM pedidos
+    JOIN fornecedores ON pedidos.fornecedor_id = fornecedores.id
+    ORDER BY pedidos.created_at DESC
+  `,
+    )
+    .all();
+  res.json(rows);
+});
+
+// GET - fetch one pedido with its line items and status log
+app.get("/pedidos/:id", (req, res) => {
+  const pedido = db
+    .prepare(`SELECT * FROM pedidos WHERE id = ?`)
+    .get(req.params.id);
+
+  if (!pedido) return res.status(404).json({ error: "Pedido não encontrado." });
+
+  const itens = db
+    .prepare(
+      `
+    SELECT * FROM pedido_itens WHERE pedido_id = ? ORDER BY item ASC
+  `,
+    )
+    .all(req.params.id);
+
+  const statusLog = db
+    .prepare(
+      `
+    SELECT * FROM pedido_status_log WHERE pedido_id = ? ORDER BY alterado_em ASC
+  `,
+    )
+    .all(req.params.id);
+
+  res.json({ ...pedido, itens, statusLog });
+});
+
+// PUT - update existing pedido
+app.put("/pedidos/:id", (req, res) => {
+  const {
+    num_pedido,
+    data_pedido,
+    fornecedor_id,
+    prazo_entrega,
+    num_proposta,
+    cond_pagamento,
+    observacoes,
+    observacoes_tecnicas,
+    aplicacao,
+    endereco_entrega,
+    comprador,
+    comprador_email,
+    comprador_telefone,
+    itens,
+  } = req.body;
+
+  try {
+    const current = db
+      .prepare(`SELECT status FROM pedidos WHERE id = ?`)
+      .get(req.params.id);
+
+    if (!current)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    if (["Faturado", "Cancelado"].includes(current.status)) {
+      return res.status(403).json({
+        error: "Este pedido não pode ser editado no status atual.",
+      });
+    }
+
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `
+        UPDATE pedidos SET
+          num_pedido=?, data_pedido=?, fornecedor_id=?, prazo_entrega=?,
+          num_proposta=?, cond_pagamento=?, observacoes=?, observacoes_tecnicas=?, aplicacao=?,
+          endereco_entrega=?, comprador=?, comprador_email=?, comprador_telefone=?,
+          updated_at=datetime('now')
+        WHERE id=?
+      `,
+      ).run(
+        num_pedido,
+        data_pedido,
+        fornecedor_id,
+        prazo_entrega,
+        num_proposta,
+        cond_pagamento,
+        observacoes,
+        observacoes_tecnicas,
+        aplicacao,
+        endereco_entrega,
+        comprador,
+        comprador_email,
+        comprador_telefone,
+        req.params.id,
+      );
+
+      // replace line items
+      db.prepare(`DELETE FROM pedido_itens WHERE pedido_id = ?`).run(
+        req.params.id,
+      );
+
+      for (const item of itens) {
+        db.prepare(
+          `
+          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          req.params.id,
+          item.item,
+          item.quantidade,
+          item.descricao,
+          item.unidade,
+          item.val_unitario,
+          item.ipi,
+          item.total,
+        );
+      }
+    });
+
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH - update pedido status
+app.patch("/pedidos/:id/status", (req, res) => {
+  const { status_novo, alterado_por, observacao } = req.body;
+
+  try {
+    const current = db
+      .prepare(`SELECT status FROM pedidos WHERE id = ?`)
+      .get(req.params.id);
+
+    if (!current)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    // define allowed transitions
+    const transicoesPermitidas = {
+      Criado: ["Em Produção", "Cancelado"],
+      "Em Produção": ["Entregue", "Cancelado"],
+      Entregue: ["Faturado", "Cancelado"],
+      Faturado: [],
+      Cancelado: [],
+    };
+
+    const permitidas = transicoesPermitidas[current.status] || [];
+
+    if (!permitidas.includes(status_novo)) {
+      return res.status(403).json({
+        error: `Não é possível mudar o status de "${current.status}" para "${status_novo}".`,
+      });
+    }
+
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `
+        UPDATE pedidos SET status = ?, updated_at = datetime('now') WHERE id = ?
+      `,
+      ).run(status_novo, req.params.id);
+
+      db.prepare(
+        `
+        INSERT INTO pedido_status_log (pedido_id, status_anterior, status_novo, alterado_por, observacao)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      ).run(
+        req.params.id,
+        current.status,
+        status_novo,
+        alterado_por,
+        observacao,
+      );
+    });
+
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch attachments for a pedido
+app.get("/pedidos/:id/anexos", (req, res) => {
+  try {
+    const anexos = db
+      .prepare(
+        `
+      SELECT * FROM pedido_anexos WHERE pedido_id = ? ORDER BY uploaded_at ASC
+    `,
+      )
+      .all(req.params.id);
+    res.json(anexos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create a new pedido
+app.post("/pedidos", (req, res) => {
+  const {
+    num_pedido,
+    data_pedido,
+    fornecedor_id,
+    prazo_entrega,
+    num_proposta,
+    cond_pagamento,
+    observacoes,
+    observacoes_tecnicas,
+    aplicacao,
+    endereco_entrega,
+    comprador,
+    comprador_email,
+    comprador_telefone,
+    alterado_por,
+    itens,
+  } = req.body;
+
+  try {
+    const transaction = db.transaction(() => {
+      const result = db
+        .prepare(
+          `
+        INSERT INTO pedidos (
+          num_pedido, data_pedido, fornecedor_id, prazo_entrega,
+          num_proposta, cond_pagamento, observacoes, observacoes_tecnicas, aplicacao,
+          endereco_entrega, comprador, comprador_email, comprador_telefone,
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criado')
+      `,
+        )
+        .run(
+          num_pedido,
+          data_pedido,
+          fornecedor_id,
+          prazo_entrega,
+          num_proposta,
+          cond_pagamento,
+          observacoes,
+          observacoes_tecnicas,
+          aplicacao,
+          endereco_entrega,
+          comprador,
+          comprador_email,
+          comprador_telefone,
+        );
+
+      const pedidoId = result.lastInsertRowid;
+
+      // insert line items
+      for (const item of itens) {
+        db.prepare(
+          `
+          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          pedidoId,
+          item.item,
+          item.quantidade,
+          item.descricao,
+          item.unidade,
+          item.val_unitario,
+          item.ipi,
+          item.total,
+        );
+      }
+
+      // log initial status
+      db.prepare(
+        `
+        INSERT INTO pedido_status_log (pedido_id, status_anterior, status_novo, alterado_por)
+        VALUES (?, null, 'Criado', ?)
+      `,
+      ).run(pedidoId, alterado_por);
+
+      return pedidoId;
+    });
+
+    const id = transaction();
+    res.json({ success: true, id });
+  } catch (err) {
+    if (err.message.includes("UNIQUE constraint failed")) {
+      res.status(409).json({ error: "Um pedido com este número já existe." });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// POST - upload attachment for a pedido
+app.post("/pedidos/:id/anexos", upload.single("arquivo"), (req, res) => {
+  try {
+    const pedido = db
+      .prepare(`SELECT status FROM pedidos WHERE id = ?`)
+      .get(req.params.id);
+
+    if (!pedido)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    // only allow attachments when status is Em Produção or later
+    const statusPermitidos = ["Em Produção", "Entregue", "Faturado"];
+    if (!statusPermitidos.includes(pedido.status)) {
+      // delete the uploaded file since we're rejecting it
+      fsSync.unlinkSync(req.file.path);
+      return res.status(403).json({
+        error:
+          "Anexos só podem ser adicionados a partir do status 'Em Produção'.",
+      });
+    }
+
+    db.prepare(
+      `
+      INSERT INTO pedido_anexos (pedido_id, nome_original, nome_arquivo, caminho, tipo, tamanho)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    ).run(
+      req.params.id,
+      req.file.originalname,
+      req.file.filename,
+      req.file.path,
+      req.file.mimetype,
+      req.file.size,
+    );
+
+    res.json({ success: true, filename: req.file.originalname });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - download/view a specific attachment
+app.get("/pedidos/anexos/:anexoId", (req, res) => {
+  try {
+    const anexo = db
+      .prepare(`SELECT * FROM pedido_anexos WHERE id = ?`)
+      .get(req.params.anexoId);
+
+    if (!anexo) return res.status(404).json({ error: "Anexo não encontrado." });
+
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${anexo.nome_original}"`,
+    );
+    res.setHeader("Content-Type", anexo.tipo);
+    res.sendFile(anexo.caminho);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - remove an attachment
+app.delete("/pedidos/anexos/:anexoId", (req, res) => {
+  try {
+    const anexo = db
+      .prepare(`SELECT * FROM pedido_anexos WHERE id = ?`)
+      .get(req.params.anexoId);
+
+    if (!anexo) return res.status(404).json({ error: "Anexo não encontrado." });
+
+    // delete file from disk
+    if (fsSync.existsSync(anexo.caminho)) {
+      fsSync.unlinkSync(anexo.caminho);
+    }
+
+    db.prepare(`DELETE FROM pedido_anexos WHERE id = ?`).run(
+      req.params.anexoId,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - generate PDF for a pedido
+app.get("/pedidos/:id/pdf", async (req, res) => {
+  try {
+    const pedido = db
+      .prepare(
+        `
+      SELECT pedidos.*, fornecedores.razao_social, fornecedores.cnpj,
+      fornecedores.ie, fornecedores.rua, fornecedores.bairro,
+      fornecedores.cidade, fornecedores.estado
+      FROM pedidos
+      JOIN fornecedores ON pedidos.fornecedor_id = fornecedores.id
+      WHERE pedidos.id = ?
+    `,
+      )
+      .get(req.params.id);
+
+    if (!pedido)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    const itens = db
+      .prepare(
+        `
+      SELECT * FROM pedido_itens WHERE pedido_id = ? ORDER BY item ASC
+    `,
+      )
+      .all(req.params.id);
+
+    const dataFormatada = formatarData(pedido.data_pedido);
+
+    // logo and fonts
+    const logoPath = path.join(
+      __dirname,
+      "../frontend/assets/Imagens/logo-veikonv-vetorizado.png",
+    );
+    const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+    const logoSrc = `data:image/png;base64,${logoBase64}`;
+
+    const fontRegular = fs
+      .readFileSync(
+        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Regular.ttf"),
+      )
+      .toString("base64");
+    const fontBold = fs
+      .readFileSync(
+        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Bold.ttf"),
+      )
+      .toString("base64");
+    const fontItalic = fs
+      .readFileSync(
+        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Italic.ttf"),
+      )
+      .toString("base64");
+    const fontBoldItalic = fs
+      .readFileSync(
+        path.join(
+          __dirname,
+          "../frontend/assets/fonts/Inter_18pt-BoldItalic.ttf",
+        ),
+      )
+      .toString("base64");
+
+    const itensHTML = itens
+      .map(
+        (item) => `
+      <tr>
+        <td>${item.item}</td>
+        <td>${item.quantidade ?? ""}</td>
+        <td>${item.descricao ?? ""}</td>
+        <td>${item.unidade ?? ""}</td>
+        <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
+        <td>${item.ipi ?? "0"}%</td>
+        <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
+      </tr>
+    `,
+      )
+      .join("");
+
+    const totalGeral = itens.reduce((sum, item) => sum + (item.total ?? 0), 0);
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt">
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @font-face {
+            font-family: 'Inter';
+            src: url(data:font/truetype;base64,${fontRegular});
+            font-weight: normal;
+            font-style: normal;
+          }
+          @font-face {
+            font-family: 'Inter';
+            src: url(data:font/truetype;base64,${fontBold});
+            font-weight: bold;
+            font-style: normal;
+          }
+          @font-face {
+            font-family: 'Inter';
+            src: url(data:font/truetype;base64,${fontItalic});
+            font-weight: normal;
+            font-style: italic;
+          }
+          @font-face {
+            font-family: 'Inter';
+            src: url(data:font/truetype;base64,${fontBoldItalic});
+            font-weight: bold;
+            font-style: italic;
+          }
+
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #000; }
+
+          h1 { font-size: 16pt; text-align: center; margin-bottom: 8mm; }
+          h2 { font-size: 11pt; margin-top: 6mm; margin-bottom: 2mm; font-weight: bold; }
+          hr { border: none; border-top: 1px solid #ccc; margin-bottom: 4mm; }
+
+          .container-numdata { display: flex; gap: 10mm; margin-bottom: 6mm; }
+          .column { flex: 1; }
+          .column label { font-size: 8pt; font-weight: bold; display: block; }
+          .column p { font-size: 10pt; }
+
+          .two-col { display: flex; gap: 10mm; margin-bottom: 6mm; }
+          .two-col .col { flex: 1; }
+          .field { margin-bottom: 3mm; }
+          .field label { font-size: 8pt; font-weight: bold; display: block; }
+          .field p { font-size: 10pt; }
+
+          table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 9pt; }
+          th { background: #f0f0f0; padding: 2mm 3mm; text-align: left; border: 1px solid #ccc; font-size: 8pt; }
+          td { padding: 2mm 3mm; border: 1px solid #ccc; }
+
+          .total-geral { text-align: right; font-weight: bold; font-size: 11pt; margin-bottom: 6mm; }
+          .observacoes { margin-bottom: 6mm; line-height: 1.5; }
+          .responsavel { display: flex; gap: 10mm; margin-bottom: 6mm; }
+          .responsavel .field { flex: 1; }
+        </style>
+      </head>
+      <body>
+
+        <h1>PEDIDO DE COMPRA</h1>
+
+        <!-- IDENTIFICATION -->
+        <div class="container-numdata">
+          <div class="column">
+            <label>NO. DO PEDIDO</label>
+            <p>${pedido.num_pedido ?? "-"}</p>
+          </div>
+          <div class="column">
+            <label>DATA</label>
+            <p>${dataFormatada}</p>
+          </div>
+          <div class="column">
+            <label>NO. DA PROPOSTA</label>
+            <p>${pedido.num_proposta ?? "-"}</p>
+          </div>
+        </div>
+
+        <!-- SUPPLIER AND COMMERCIAL CONDITIONS -->
+        <div class="two-col">
+          <div class="col">
+            <h2>DADOS DO FORNECEDOR</h2>
+            <hr>
+            <div class="field"><label>FORNECEDOR</label><p>${pedido.razao_social ?? "-"}</p></div>
+            <div class="two-col">
+              <div class="field"><label>CNPJ</label><p>${pedido.cnpj ?? "-"}</p></div>
+              <div class="field"><label>IE</label><p>${pedido.ie ?? "-"}</p></div>
+            </div>
+            <div class="field"><label>ENDEREÇO</label><p>${pedido.rua ?? "-"}</p></div>
+            <div class="two-col">
+              <div class="field"><label>BAIRRO</label><p>${pedido.bairro ?? "-"}</p></div>
+              <div class="field"><label>CIDADE</label><p>${pedido.cidade ?? "-"}</p></div>
+              <div class="field"><label>ESTADO</label><p>${pedido.estado ?? "-"}</p></div>
+            </div>
+          </div>
+          <div class="col">
+            <h2>CONDIÇÕES COMERCIAIS</h2>
+            <hr>
+            <div class="field"><label>PRAZO DE ENTREGA</label><p>${pedido.prazo_entrega ?? "-"}</p></div>
+            <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${pedido.cond_pagamento ?? "-"}</p></div>
+            <div class="field"><label>APLICAÇÃO</label><p>${pedido.aplicacao ?? "-"}</p></div>
+            <div class="field"><label>ENDEREÇO DE ENTREGA</label><p>${pedido.endereco_entrega ?? "-"}</p></div>
+          </div>
+        </div>
+
+        <!-- ITEMS TABLE -->
+        <h2>ITENS DO PEDIDO</h2>
+        <hr>
+        <table>
+          <thead>
+            <tr>
+              <th>ITEM</th>
+              <th>QTD</th>
+              <th>DESCRIÇÃO</th>
+              <th>UNID.</th>
+              <th>VALOR UNIT.</th>
+              <th>IPI (%)</th>
+              <th>TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itensHTML}
+          </tbody>
+        </table>
+        <div class="total-geral">
+          TOTAL GERAL: ${totalGeral.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+        </div>
+
+        <!-- OBSERVAÇÕES -->
+        <h2>OBSERVAÇÕES</h2>
+        <hr>
+        <div class="observacoes">
+          <p>${pedido.observacoes ?? "-"}</p>
+        </div>
+
+        <!-- OBSERVAÇÕES TÉCNICAS -->
+        <h2>OBSERVAÇÕES TÉCNICAS</h2>
+        <hr>
+        <div class="observacoes">
+          <p>${pedido.observacoes_tecnicas ?? "-"}</p>
+        </div>
+
+        <!-- RESPONSÁVEL -->
+        <h2>RESPONSÁVEL PELA COMPRA</h2>
+        <hr>
+        <div class="responsavel">
+          <div class="field"><label>COMPRADOR</label><p>${pedido.comprador ?? "-"}</p></div>
+          <div class="field"><label>EMAIL</label><p>${pedido.comprador_email ?? "-"}</p></div>
+          <div class="field"><label>TELEFONE</label><p>${pedido.comprador_telefone ?? "-"}</p></div>
+        </div>
+
+      </body>
+      </html>
+    `;
+
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdf = await page.pdf({
+      format: "A4",
+      margin: { top: "40mm", bottom: "20mm", left: "10mm", right: "10mm" },
+      displayHeaderFooter: true,
+      headerTemplate: `
+        <div style="width:100%; font-family: Arial, sans-serif; font-size: 9pt; padding: 3mm 10mm; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
+          <img src="${logoSrc}" style="height: 12mm;" />
+          <div style="text-align: right; font-size: 8pt;">
+            <strong>VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
+            CNPJ: 19.309.792/0001-09 / IE: 714.079.490.113<br>
+            Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
+            Telefone: (19) 3846-6802 / Email: comercial@veikon.com.br
+          </div>
+        </div>
+      `,
+      footerTemplate: `
+        <div style="width:100%; font-family: Arial, sans-serif; font-size: 8pt; padding: 2mm 10mm; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: flex-start;">
+          <div style="display: flex; flex-direction: column; gap: 1mm;">
+            <span>Fornecedor: ${pedido.razao_social ?? "-"}</span>
+            <span>Pedido: ${pedido.num_pedido ?? "-"}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1mm;">
+            <span>Data: ${dataFormatada}</span>
+            <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+          </div>
+        </div>
+      `,
+    });
+
+    await browser.close();
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="PC-${pedido.num_pedido}.pdf"`,
     });
     res.send(pdf);
   } catch (err) {

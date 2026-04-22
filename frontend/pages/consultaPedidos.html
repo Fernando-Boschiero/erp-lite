@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Consulta de Pedidos de Compra</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>PEDIDOS DE COMPRA</h1>
+      <div class="consulta-controls">
+        <input
+          type="text"
+          id="busca"
+          placeholder="Buscar por número, fornecedor, status..." />
+        <button type="button" id="btn-novo-pedido">+ NOVO PEDIDO</button>
+      </div>
+      <table id="tabela-pedidos">
+        <thead>
+          <tr>
+            <th>No. do Pedido</th>
+            <th>Fornecedor</th>
+            <th>Data</th>
+            <th>Prazo de Entrega</th>
+            <th>Status</th>
+            <th>Total Geral</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="resultado-pedidos"></tbody>
+      </table>
+    </div>
+    <script src="../js/consultaPedidos.js"></script>
+  </body>
+</html>

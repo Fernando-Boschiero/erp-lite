@@ -47,6 +47,12 @@ async function carregarCotacoes() {
   renderizarTabela(cotacoes);
 }
 
+function formatarData(dataStr) {
+  if (!dataStr) return "-";
+  const [ano, mes, dia] = dataStr.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
 async function renderizarTabela(lista) {
   resultadoCotacoes.innerHTML = "";
 
@@ -63,9 +69,7 @@ async function renderizarTabela(lista) {
     const cotacao = await res.json();
     const total = calcTotalCotacao(cotacao.itens || []);
     const revisao = c.revisao == 0 ? "Rev.0" : `Rev.${c.revisao}`;
-    const dataFormatada = c.data_cotacao
-      ? new Date(c.data_cotacao).toLocaleDateString("pt-BR")
-      : "-";
+    const dataFormatada = formatarData(cotacao.data_cotacao);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
