@@ -101,4 +101,54 @@ db.prepare(
 `,
 ).run();
 
+// update pedidos table to add status and comprador fields
+// since the table may already exist, we use ALTER TABLE to add missing columns
+try {
+  db.prepare(
+    `ALTER TABLE pedidos ADD COLUMN status TEXT DEFAULT 'Criado'`,
+  ).run();
+} catch (e) {}
+try {
+  db.prepare(`ALTER TABLE pedidos ADD COLUMN comprador TEXT`).run();
+} catch (e) {}
+try {
+  db.prepare(`ALTER TABLE pedidos ADD COLUMN comprador_email TEXT`).run();
+} catch (e) {}
+try {
+  db.prepare(`ALTER TABLE pedidos ADD COLUMN comprador_telefone TEXT`).run();
+} catch (e) {}
+
+// pedido status log - tracks every status change
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS pedido_status_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id INTEGER NOT NULL,
+    status_anterior TEXT,
+    status_novo TEXT NOT NULL,
+    alterado_por TEXT,
+    alterado_em TEXT DEFAULT (datetime('now')),
+    observacao TEXT,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
+  )
+`,
+).run();
+
+// pedido anexos - stores file attachments linked to a pedido
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS pedido_anexos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id INTEGER NOT NULL,
+    nome_original TEXT NOT NULL,   -- original filename as uploaded
+    nome_arquivo TEXT NOT NULL,    -- stored filename on server (uuid to avoid conflicts)
+    caminho TEXT NOT NULL,         -- full path on server
+    tipo TEXT,                     -- mime type e.g. application/pdf, image/jpeg
+    tamanho INTEGER,               -- file size in bytes
+    uploaded_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
+  )
+`,
+).run();
+
 module.exports = db;

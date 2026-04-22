@@ -17,17 +17,21 @@
         <div class="container-logo">
           <img
             src="../assets/Imagens/logo-veikonv-vetorizado.png"
-            alt="Logo da empresa Veikon Engenharia" />
+            alt="Logo Veikon" />
         </div>
         <div class="container-dados-veikon">
-          <h1 class="font-headline font-bold text-lg text-on-surface mb-1">
-            VEIKON EQUIPAMENTOS E SERVIÇOS LTDA
-          </h1>
-          <p><span class="font-semibold">CNPJ:</span> 19.309.792/0001-09</p>
-          <p><span class="font-semibold">IE:</span> 714.079.490.113</p>
+          <h1>VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</h1>
+          <p>
+            <span class="font-semibold">CNPJ:</span> 19.309.792/0001-09 /
+            <span class="font-semibold">IE:</span> 714.079.490.113
+          </p>
+
           <p>Rua Joana Fabri Thomé 442, Santa Claudina</p>
           <p>Vinhedo - SP, CEP: 13284-432</p>
-          <p><span class="font-semibold">Telefone:</span> (19) 3846-6802</p>
+          <p>
+            <span class="font-semibold">Telefone:</span> (19) 3846-6802 /
+            <span class="font-semibold">Email:</span> comercial@veikon.com.br
+          </p>
         </div>
       </header>
       <hr />
@@ -164,7 +168,7 @@
           <label for="observações">OBSERVAÇÕES TÉCNICAS:</label>
           <input
             type="text"
-            id="observações-tecnicas"
+            id="observacoes-tecnicas"
             name="observações_tecnicas"
             placeholder="Descrever em quais componentes/serviços os materias acima serão utilizados" />
           <div class="container-multiple-inputs">
@@ -189,19 +193,87 @@
             <h2>RESPONSÁVEL PELA COMPRA</h2>
             <div class="container-multiple-inputs">
               <div class="input-group">
-                <p>COMPRADOR</p>
-                <p>-</p>
+                <label for="comprador">COMPRADOR</label>
+                <input
+                  type="text"
+                  id="comprador"
+                  name="comprador"
+                  placeholder="Nome do Responsável" />
               </div>
               <div class="input-group">
-                <p>EMAIL</p>
-                <p>-</p>
+                <label for="compradorEmail">EMAIL</label>
+                <input
+                  type="email"
+                  id="compradorEmail"
+                  name="comprador_email"
+                  placeholder="email@empresa.com" />
               </div>
               <div class="input-group">
-                <p>TELEFONE</p>
-                <p>-</p>
+                <label for="compradorTelefone">TELEFONE</label>
+                <input
+                  type="text"
+                  id="compradorTelefone"
+                  name="comprador_telefone"
+                  placeholder="(00) 00000-0000" />
               </div>
             </div>
           </div>
+        </div>
+        <!-- STATUS DO PEDIDO -->
+        <div class="no-print">
+          <h2>STATUS DO PEDIDO</h2>
+          <hr />
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="statusPedido">STATUS ATUAL</label>
+              <input
+                type="text"
+                id="statusPedido"
+                name="status"
+                value="Criado"
+                readonly />
+            </div>
+            <div class="input-group">
+              <label for="statusSelect">ALTERAR STATUS</label>
+              <select id="statusSelect" name="status_select">
+                <option value="Criado">Criado</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="alteradoPor">ALTERADO POR</label>
+              <input
+                type="text"
+                id="alteradoPor"
+                name="alterado_por"
+                placeholder="Seu nome" />
+            </div>
+            <div class="input-group">
+              <label for="observacaoStatus">OBSERVAÇÃO</label>
+              <input
+                type="text"
+                id="observacaoStatus"
+                name="observacao_status"
+                placeholder="Motivo da alteração (opcional)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ANEXOS - only visible when status is Em Produção or later -->
+        <div id="anexos-section" style="display: none">
+          <h2>ANEXOS / NOTAS FISCAIS</h2>
+          <hr />
+          <div class="input-group">
+            <label for="fileInput">ADICIONAR ANEXO (PDF, JPG, PNG)</label>
+            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" />
+            <button type="button" id="btn-upload-anexo">ENVIAR ANEXO</button>
+          </div>
+          <div id="lista-anexos"></div>
+        </div>
+
+        <!-- FORM ACTIONS -->
+        <div class="form-actions no-print">
+          <button type="button" id="btn-salvar-pedido">SALVAR PEDIDO</button>
+          <button type="button" id="btn-gerar-pdf">GERAR PDF</button>
         </div>
       </form>
       <div class="footer-disclaimer">
@@ -211,5 +283,6 @@
     </div>
     <script src="../js/sharedFornecedores.js"></script>
     <script src="../js/formFornecedores.js"></script>
+    <script src="../js/pedido.js"></script>
   </body>
 </html>
