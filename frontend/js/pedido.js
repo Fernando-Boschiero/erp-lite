@@ -7,15 +7,49 @@ const statusPedido = document.getElementById("statusPedido");
 const statusSelect = document.getElementById("statusSelect");
 const alteradoPor = document.getElementById("alteradoPor");
 const observacaoStatus = document.getElementById("observacaoStatus");
-const anexosSection = document.getElementById("anexos-section");
-const btnUploadAnexo = document.getElementById("btn-upload-anexo");
-const fileInput = document.getElementById("fileInput");
-const listaAnexos = document.getElementById("lista-anexos");
+/* NOTAS FISCAIS VARIABLES */
+const numeroNF = document.getElementById("numeroNF");
+const btnAdicionarNF = document.getElementById("btn-adicionar-nf");
+const btnConfirmarNF = document.getElementById("btn-confirmar-nf");
+const btnCancelarNF = document.getElementById("btn-cancelar-nf");
+const nfItensSelector = document.getElementById("nf-itens-selector");
+const nfCheckboxes = document.getElementById("nf-checkboxes");
+const listaNFs = document.getElementById("lista-nfs");
+/* VARIAVEIS PARA CALCULO DE DATA PREVISTA */
+const prazoEntrega = document.getElementById("prazoEntrega");
+const dataPrevista = document.getElementById("dataPrevista");
+
+/* CÁLCULO DE DATAS */
+function calcularDataPrevista() {
+  const dataPedido = document.getElementById("dataPedido").value;
+  const prazo = parseInt(prazoEntrega.value);
+
+  if (!dataPedido || isNaN(prazo)) {
+    dataPrevista.value = "";
+    return;
+  }
+
+  const [ano, mes, dia] = dataPedido.split("-");
+  const data = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+  data.setDate(data.getDate() + prazo);
+
+  const diaFormatado = String(data.getDate()).padStart(2, "0");
+  const mesFormatado = String(data.getMonth() + 1).padStart(2, "0");
+  const anoFormatado = data.getFullYear();
+
+  dataPrevista.value = `${diaFormatado}/${mesFormatado}/${anoFormatado}`;
+}
+
+// recalculate whenever either field changes
+document
+  .getElementById("dataPedido")
+  ?.addEventListener("input", calcularDataPrevista);
+prazoEntrega?.addEventListener("input", calcularDataPrevista);
 
 /* ─── STATUS ─── */
 const transicoesPermitidas = {
-  Criado: ["Em Produção", "Cancelado"],
-  "Em Produção": ["Entregue", "Cancelado"],
+  Criado: ["Enviado", "Cancelado"],
+  Enviado: ["Entregue", "Cancelado"],
   Entregue: ["Faturado", "Cancelado"],
   Faturado: [],
   Cancelado: [],
@@ -30,13 +64,6 @@ function atualizarOpcoesStatus(statusAtual) {
     option.textContent = s;
     statusSelect.appendChild(option);
   });
-}
-
-function atualizarVisibilidadeAnexos(status) {
-  const statusPermitidos = ["Em Produção", "Entregue", "Faturado"];
-  anexosSection.style.display = statusPermitidos.includes(status)
-    ? "block"
-    : "none";
 }
 
 /* ─── COLLECT FORM DATA ─── */
@@ -83,6 +110,7 @@ function buildPayload() {
     data_pedido: document.getElementById("dataPedido")?.value || "",
     fornecedor_id: document.getElementById("fornecedor")?.value || null,
     prazo_entrega: document.getElementById("prazoEntrega")?.value || "",
+    data_prevista: dataPrevista?.value || "",
     num_proposta: document.getElementById("numProposta")?.value || "",
     cond_pagamento: document.getElementById("condPagamento")?.value || "",
     observacoes: document.getElementById("observações")?.value || "",
@@ -143,7 +171,6 @@ if (btnSalvarPedido) {
         currentPedidoId = data.id;
         alert("Pedido salvo com sucesso!");
         atualizarOpcoesStatus("Criado");
-        atualizarVisibilidadeAnexos("Criado");
       }
     }
   });
@@ -186,62 +213,108 @@ if (statusSelect) {
     } else {
       statusPedido.value = statusNovo;
       atualizarOpcoesStatus(statusNovo);
-      atualizarVisibilidadeAnexos(statusNovo);
       alert(`Status alterado para "${statusNovo}" com sucesso!`);
     }
   });
 }
 
-/* ─── ATTACHMENTS ─── */
-async function carregarAnexos() {
+/* ─── NOTAS FISCAIS ─── */
+async function carregarNFs() {
   if (!currentPedidoId) return;
 
   const res = await fetch(
-    `http://localhost:3000/pedidos/${currentPedidoId}/anexos`,
+    `http://localhost:3000/pedidos/${currentPedidoId}/nf`,
   );
-  const anexos = await res.json();
+  const nfs = await res.json();
 
-  listaAnexos.innerHTML = "";
+  listaNFs.innerHTML = "";
 
-  if (anexos.length === 0) {
-    listaAnexos.innerHTML = `<p>Nenhum anexo adicionado.</p>`;
+  if (nfs.length === 0) {
+    listaNFs.innerHTML = `<p>Nenhuma nota fiscal adicionada.</p>`;
     return;
   }
 
-  anexos.forEach((anexo) => {
+  // get current items from table to show descriptions
+  const tableBody = document.querySelector("#itens-table tbody");
+  const rows = Array.from(tableBody.rows);
+
+  nfs.forEach((nf) => {
+    // find item descriptions for linked items
+    const itensList = nf.itens
+      .map((itemId) => {
+        // find the row that matches this item id
+        const row = rows.find((r) => r.dataset.itemId == itemId);
+        return row
+          ? row.cells[3]?.textContent || `Item ${itemId}`
+          : `Item ${itemId}`;
+      })
+      .join(", ");
+
     const div = document.createElement("div");
-    div.className = "anexo-item";
+    div.className = "nf-item";
     div.innerHTML = `
-      <span>${anexo.nome_original}</span>
-      <span style="font-size:0.8em; color:#666;">${(anexo.tamanho / 1024).toFixed(1)} KB</span>
-      <a href="http://localhost:3000/pedidos/anexos/${anexo.id}" target="_blank">👁️ Ver</a>
-      <button type="button" class="btn-deletar-anexo" data-id="${anexo.id}">🗑️</button>
+      <span><strong>NF ${nf.numero_nf}</strong> — ${itensList}</span>
+      <button type="button" class="btn-deletar-nf" data-id="${nf.id}">🗑️</button>
     `;
-    listaAnexos.appendChild(div);
+    listaNFs.appendChild(div);
   });
 }
 
-if (btnUploadAnexo) {
-  btnUploadAnexo.addEventListener("click", async () => {
+function mostrarSeletorItens() {
+  const tableBody = document.querySelector("#itens-table tbody");
+  const rows = Array.from(tableBody.rows);
+
+  nfCheckboxes.innerHTML = "";
+
+  rows.forEach((row, index) => {
+    const descricao = row.cells[3]?.textContent || `Item ${index + 1}`;
+    const itemId = row.dataset.itemId;
+
+    const label = document.createElement("label");
+    label.style.display = "block";
+    label.innerHTML = `
+      <input type="checkbox" class="nf-item-checkbox" value="${itemId}">
+      Item ${index + 1} — ${descricao}
+    `;
+    nfCheckboxes.appendChild(label);
+  });
+
+  nfItensSelector.style.display = "block";
+}
+
+if (btnAdicionarNF) {
+  btnAdicionarNF.addEventListener("click", () => {
     if (!currentPedidoId) {
-      alert("Salve o pedido antes de adicionar anexos.");
+      alert("Salve o pedido antes de adicionar notas fiscais.");
       return;
     }
-
-    const file = fileInput.files[0];
-    if (!file) {
-      alert("Por favor, selecione um arquivo.");
+    if (!numeroNF.value) {
+      alert("Por favor, informe o número da NF.");
       return;
     }
+    mostrarSeletorItens();
+  });
+}
 
-    const formData = new FormData();
-    formData.append("arquivo", file);
+if (btnConfirmarNF) {
+  btnConfirmarNF.addEventListener("click", async () => {
+    const checkboxes = document.querySelectorAll(".nf-item-checkbox:checked");
+    const itemIds = Array.from(checkboxes).map((cb) => parseInt(cb.value));
+
+    if (itemIds.length === 0) {
+      alert("Selecione pelo menos um item.");
+      return;
+    }
 
     const result = await fetch(
-      `http://localhost:3000/pedidos/${currentPedidoId}/anexos`,
+      `http://localhost:3000/pedidos/${currentPedidoId}/nf`,
       {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numero_nf: numeroNF.value,
+          item_ids: itemIds,
+        }),
       },
     );
 
@@ -249,20 +322,27 @@ if (btnUploadAnexo) {
     if (!result.ok) {
       alert(data.error);
     } else {
-      fileInput.value = "";
-      await carregarAnexos();
-      alert("Anexo enviado com sucesso!");
+      numeroNF.value = "";
+      nfItensSelector.style.display = "none";
+      await carregarNFs();
     }
   });
 }
 
-if (listaAnexos) {
-  listaAnexos.addEventListener("click", async (e) => {
-    if (e.target.classList.contains("btn-deletar-anexo")) {
-      const id = e.target.dataset.id;
-      if (!confirm("Tem certeza que deseja remover este anexo?")) return;
+if (btnCancelarNF) {
+  btnCancelarNF.addEventListener("click", () => {
+    numeroNF.value = "";
+    nfItensSelector.style.display = "none";
+  });
+}
 
-      const result = await fetch(`http://localhost:3000/pedidos/anexos/${id}`, {
+if (listaNFs) {
+  listaNFs.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("btn-deletar-nf")) {
+      const id = e.target.dataset.id;
+      if (!confirm("Tem certeza que deseja remover esta nota fiscal?")) return;
+
+      const result = await fetch(`http://localhost:3000/pedidos/nf/${id}`, {
         method: "DELETE",
       });
 
@@ -270,7 +350,7 @@ if (listaAnexos) {
       if (!result.ok) {
         alert(data.error);
       } else {
-        await carregarAnexos();
+        await carregarNFs();
       }
     }
   });
@@ -284,6 +364,7 @@ async function carregarPedido(id) {
   document.getElementById("numPedido").value = pedido.num_pedido || "";
   document.getElementById("dataPedido").value = pedido.data_pedido || "";
   document.getElementById("prazoEntrega").value = pedido.prazo_entrega || "";
+  document.getElementById("dataPrevista").value = pedido.data_prevista || "";
   document.getElementById("numProposta").value = pedido.num_proposta || "";
   document.getElementById("condPagamento").value = pedido.cond_pagamento || "";
   document.getElementById("observações").value = pedido.observacoes || "";
@@ -318,6 +399,7 @@ async function carregarPedido(id) {
   tableBody.innerHTML = "";
   (pedido.itens || []).forEach((item, index) => {
     const tr = document.createElement("tr");
+    tr.dataset.itemId = item.id;
     tr.innerHTML = `
       <td><input type="checkbox" class="row-select"></td>
       <td>${index + 1}</td>
@@ -331,13 +413,12 @@ async function carregarPedido(id) {
     tableBody.appendChild(tr);
   });
 
+  calcTotalGeral();
+
   // set status
   statusPedido.value = pedido.status || "Criado";
   atualizarOpcoesStatus(pedido.status || "Criado");
-  atualizarVisibilidadeAnexos(pedido.status || "Criado");
-
-  // load attachments if applicable
-  await carregarAnexos();
+  await carregarNFs();
 }
 
 // Ações ao clicar em Gerar PDF
@@ -369,5 +450,4 @@ if (pedidoIdFromUrl) {
   });
 } else {
   atualizarOpcoesStatus("Criado");
-  atualizarVisibilidadeAnexos("Criado");
 }

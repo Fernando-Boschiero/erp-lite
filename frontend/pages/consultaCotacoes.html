@@ -15,10 +15,24 @@
     <div class="gerenciamento-container">
       <h1>COTAÇÕES</h1>
       <div class="consulta-controls">
-        <input
-          type="text"
-          id="busca"
-          placeholder="Buscar por número, cliente, status..." />
+        <div class="consulta-filters">
+          <button type="button" id="btn-refresh">🔄</button>
+          <div class="filter-group">
+            <input
+              type="text"
+              id="busca"
+              placeholder="Buscar por número, fornecedor, status..." />
+          </div>
+          <div class="filter-group">
+            <label for="filtroDe">DE</label>
+            <input type="date" id="filtroDe" />
+          </div>
+          <div class="filter-group">
+            <label for="filtroAte">ATÉ</label>
+            <input type="date" id="filtroAte" />
+          </div>
+          <button type="button" id="btn-limpar-filtros">Limpar</button>
+        </div>
         <button type="button" id="btn-nova-cotacao">+ NOVA COTAÇÃO</button>
       </div>
       <table id="tabela-cotacoes">
@@ -27,6 +41,9 @@
             <th>No. da Cotação</th>
             <th>Cliente</th>
             <th>Data</th>
+            <th id="header-data-prevista" style="cursor: pointer">
+              Data Prevista ↕
+            </th>
             <th>Revisão</th>
             <th>Status</th>
             <th>Total Geral</th>
@@ -35,6 +52,94 @@
         </thead>
         <tbody id="resultado-cotacoes"></tbody>
       </table>
+    </div>
+    <!-- MODAL REVISÕES -->
+    <div
+      id="modal-revisoes"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      ">
+      <div
+        style="
+          background: white;
+          border-radius: 8px;
+          padding: 20px;
+          width: 600px;
+          max-width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+        ">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+          ">
+          <h2 id="modal-revisoes-titulo">Histórico de Revisões</h2>
+          <button
+            type="button"
+            id="btn-fechar-modal"
+            style="
+              font-size: 1.2em;
+              background: none;
+              border: none;
+              cursor: pointer;
+            ">
+            ✕
+          </button>
+        </div>
+        <table
+          id="tabela-revisoes"
+          style="width: 100%; border-collapse: collapse">
+          <thead>
+            <tr>
+              <th
+                style="
+                  text-align: left;
+                  padding: 8px;
+                  border-bottom: 1px solid #ccc;
+                ">
+                Revisão
+              </th>
+              <th
+                style="
+                  text-align: left;
+                  padding: 8px;
+                  border-bottom: 1px solid #ccc;
+                ">
+                Data
+              </th>
+              <th
+                style="
+                  text-align: left;
+                  padding: 8px;
+                  border-bottom: 1px solid #ccc;
+                ">
+                Status
+              </th>
+              <th
+                style="
+                  text-align: left;
+                  padding: 8px;
+                  border-bottom: 1px solid #ccc;
+                ">
+                Ações
+              </th>
+            </tr>
+          </thead>
+          <tbody id="resultado-revisoes"></tbody>
+        </table>
+      </div>
     </div>
     <script src="../js/consultaCotacoes.js"></script>
   </body>
