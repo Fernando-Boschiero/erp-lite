@@ -11,7 +11,7 @@
   --form-color-input: hsl(0 0% 65% / 0.2);
   --table-color-header: hsl(0 0% 65% / 0.4);
   --primary-button-gradient: hsl(148, 100%, 27%);
-  --secondary-button-gradient: hsl(148, 100%, 41%);
+  --secondary-button-gradient: hsl(148, 100%, 40%);
   --secondary-button-color: hsl(0 0% 80% / 0.2);
   --secondary-background-color: hsl(0 0% 80% / 0.1);
   --h1: 1.3rem;
@@ -20,6 +20,10 @@
   --color-primary: hsl(145, 100%, 16%);
   --color-secondary: hsl(145 100% 25% / 0.1);
   --container-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+h2 {
+  margin-top: 15px;
 }
 
 body {
@@ -81,7 +85,7 @@ body {
 hr {
   border: none;
   border-top: 1px solid var(--color-primary);
-  margin: 5mm auto;
+  margin: 4mm auto;
   width: 90%;
 }
 
@@ -94,12 +98,12 @@ form {
 }
 
 form h1 {
+  margin-top: 15px;
   text-align: center;
 }
 
 form input,
-form select,
-.consulta-controls > input {
+form select {
   margin-top: 2mm;
   margin-bottom: 2mm;
   border: none;
@@ -199,10 +203,10 @@ form select,
   align-items: center;
 }
 
-/* //CSS FOR THE TABLE */
+/* CSS FOR THE TABLE */
 
 table {
-  margin-top: 10mm;
+  margin: 5mm 0 3mm 0;
   width: 100%;
   text-align: left;
   border-collapse: collapse;
@@ -240,7 +244,7 @@ td:nth-of-type(1) {
 
 .responsavel-compra {
   margin-top: 5mm;
-  height: 8rem;
+  height: 10rem;
   background-color: var(--form-color-input);
   padding: 5mm;
   border-radius: 5px;
@@ -261,7 +265,7 @@ td:nth-of-type(1) {
 /* CSS FOR THE GERENCIAMENTO FORNECEDORES PAGE */
 
 .gerenciamento-container {
-  width: 90%;
+  width: 95vw;
   margin-top: 30px;
   height: auto;
   background-color: var(--secondary-background-color);
@@ -283,67 +287,61 @@ td:nth-of-type(1) {
   margin-bottom: 10px;
 }
 
-.tabs {
-  display: flex;
-  justify-content: left;
-  list-style-type: none;
-  margin: 20px 0;
-}
-
-.tab {
+button {
+  color: white;
+  font-weight: 600;
+  border: none;
   cursor: pointer;
-  padding: 15px;
+  padding: 10px;
   border-radius: 5px;
-  margin-right: 5px;
-  margin: 0.1mm solid var(--form-color-input);
-}
-
-.tab.active {
+  margin: 0 5px 0 5px;
   background: linear-gradient(
-    to right bottom,
-    var(--primary-button-gradient),
+    to bottom right,
+    var(--primary-button-gradient) 70%,
     var(--secondary-button-gradient)
   );
 }
 
-.tab:hover {
+button:hover {
   background-color: var(--form-color-input);
 }
 
-.tab-content {
-  margin-left: 20px;
-  margin-right: 20px;
+.no-print {
+  margin-top: 5px;
 }
 
-.tab-content button {
-  cursor: pointer;
-  color: black;
-  font-weight: 600;
-  padding: 15px;
-  border-radius: 5px;
-  border: none;
-  margin-right: 5px;
-  background: linear-gradient(
-    to right bottom,
-    var(--primary-button-gradient),
-    var(--secondary-button-gradient)
-  );
+#select-fornecedor-container {
+  margin-top: 10px;
 }
 
 .column-toggles input {
   margin-left: 5px;
 }
 
-#busca {
-  width: 400px;
-  margin-bottom: 20px;
+/* CSS FOR CONULTA PEDIDOS AND CONSULTA COTAÇÃO*/
+
+.consulta-filters {
+  display: flex;
+  margin: 20px 0;
+  align-items: center;
 }
 
-.mode-buttons {
-  background-color: linear-gradient(
-    to right bottom,
-    var(--primary-button-gradient),
-    var(--secondary-button-gradient)
-  );
-  margin-top: 10px;
+.filter-group input {
+  height: 2rem;
+  padding-left: 5px;
+}
+
+.filter-group label {
+  margin-left: 10px;
+}
+
+#btn-refresh {
+  background: none;
+  font-size: 2rem;
+  padding: 0;
+  margin-left: 0;
+}
+
+#busca {
+  width: 400px;
 }

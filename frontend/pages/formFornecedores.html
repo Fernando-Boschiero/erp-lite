@@ -105,12 +105,23 @@
           <div class="column-fornecedor-condicoes">
             <h2>CONDIÇÕES COMERCIAIS</h2>
             <hr />
-            <label for="prazoEntrega">PRAZO DE ENTREGA</label>
-            <input
-              type="text"
-              id="prazoEntrega"
-              name="prazo_entrega"
-              placeholder="Ex: 15 dias úteis" />
+            <div class="input-group">
+              <label for="prazoEntrega">PRAZO DE ENTREGA (dias)</label>
+              <input
+                type="number"
+                id="prazoEntrega"
+                name="prazo_entrega"
+                placeholder="Ex: 40"
+                min="0" />
+            </div>
+            <div class="input-group">
+              <label for="dataPrevista">DATA PREVISTA DE ENTREGA</label>
+              <input
+                type="text"
+                id="dataPrevista"
+                name="data_prevista"
+                readonly />
+            </div>
             <label for="numProposta">NO. DA PROPOSTA</label>
             <input
               type="text"
@@ -258,22 +269,36 @@
           </div>
         </div>
 
-        <!-- ANEXOS - only visible when status is Em Produção or later -->
-        <div id="anexos-section" style="display: none">
-          <h2>ANEXOS / NOTAS FISCAIS</h2>
-          <hr />
-          <div class="input-group">
-            <label for="fileInput">ADICIONAR ANEXO (PDF, JPG, PNG)</label>
-            <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png" />
-            <button type="button" id="btn-upload-anexo">ENVIAR ANEXO</button>
-          </div>
-          <div id="lista-anexos"></div>
-        </div>
-
         <!-- FORM ACTIONS -->
         <div class="form-actions no-print">
           <button type="button" id="btn-salvar-pedido">SALVAR PEDIDO</button>
           <button type="button" id="btn-gerar-pdf">GERAR PDF</button>
+        </div>
+
+        <!-- NOTAS FISCAIS -->
+        <div id="nf-section">
+          <h2>NOTAS FISCAIS</h2>
+          <hr />
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="numeroNF">NÚMERO DA NF</label>
+              <input type="text" id="numeroNF" placeholder="Ex: 12345" />
+            </div>
+            <div class="input-group">
+              <button type="button" id="btn-adicionar-nf">ADICIONAR NF</button>
+            </div>
+          </div>
+
+          <!-- item checkboxes will appear here when adding a NF -->
+          <div id="nf-itens-selector" style="display: none">
+            <p><strong>Selecione os itens relacionados a esta NF:</strong></p>
+            <div id="nf-checkboxes"></div>
+            <button type="button" id="btn-confirmar-nf">CONFIRMAR</button>
+            <button type="button" id="btn-cancelar-nf">CANCELAR</button>
+          </div>
+
+          <!-- list of added NFs -->
+          <div id="lista-nfs"></div>
         </div>
       </form>
       <div class="footer-disclaimer">

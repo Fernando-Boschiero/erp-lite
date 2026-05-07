@@ -40,9 +40,11 @@ const applyNumFormatting = (value, min = 0, fallback = "0") => {
 };
 
 const parseBR = (value) => {
+  if (!value) return 0;
   return (
     parseFloat(
       value
+        .toString()
         .replace(/[^\d,.-]/g, "")
         .replace(/\./g, "")
         .replace(",", "."),
@@ -110,6 +112,17 @@ if (tableBody) {
     if (row) {
       calcRow(row);
       calcTotalGeral();
+      console.log("rows in table:", tableBody.rows.length);
+      Array.from(tableBody.rows).forEach((row, i) => {
+        console.log(
+          `row ${i} val-unitario:`,
+          row.querySelector(".val-unitario")?.textContent,
+        );
+        console.log(
+          `row ${i} quantidade:`,
+          row.querySelector(".quantidade")?.textContent,
+        );
+      });
     }
   });
 }

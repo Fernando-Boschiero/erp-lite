@@ -9,39 +9,6 @@ const db = require("./db/db");
 const fs = require("fs");
 const path = require("path");
 
-const multer = require("multer");
-const { v4: uuidv4 } = require("crypto");
-const fsSync = require("fs");
-const uploadDir = path.join(__dirname, "../backend/uploads/pedidos");
-
-// create uploads folder if it doesn't exist
-if (!fsSync.existsSync(uploadDir)) {
-  fsSync.mkdirSync(uploadDir, { recursive: true });
-}
-
-// multer config - stores files with a unique name to avoid conflicts
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    cb(null, uniqueName);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20mb limit
-  fileFilter: (req, file, cb) => {
-    const allowed = ["application/pdf", "image/jpeg", "image/png"];
-    if (allowed.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Tipo de arquivo não permitido. Use PDF, JPG ou PNG."));
-    }
-  },
-});
-
 // create an express app (your server)
 const app = express();
 
@@ -49,7 +16,8 @@ const app = express();
 const PORT = 3000;
 
 // middleware - parse incoming JSON requests
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 // Função para formatar a data em PT-BR
@@ -217,6 +185,8 @@ app.post("/cotacoes", (req, res) => {
     condicoes_proposta,
     observacoes,
     prazo_entrega,
+    data_aceite,
+    data_prevista,
     cond_pagamento,
     validade_proposta,
     moeda,
@@ -234,14 +204,14 @@ app.post("/cotacoes", (req, res) => {
       const result = db
         .prepare(
           `
-        INSERT INTO cotacoes (
-          num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
-          objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
-          prazo_entrega, cond_pagamento, validade_proposta, moeda,
-          condicoes_gerais, comprador, comprador_email, comprador_telefone,
-          status, revisao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
-      `,
+  INSERT INTO cotacoes (
+    num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
+    objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
+    prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
+    condicoes_gerais, comprador, comprador_email, comprador_telefone,
+    status, revisao
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
+`,
         )
         .run(
           num_cotacao,
@@ -254,6 +224,8 @@ app.post("/cotacoes", (req, res) => {
           condicoes_proposta,
           observacoes,
           prazo_entrega,
+          data_aceite,
+          data_prevista,
           cond_pagamento,
           validade_proposta,
           moeda,
@@ -318,6 +290,8 @@ app.put("/cotacoes/:id", (req, res) => {
     condicoes_proposta,
     observacoes,
     prazo_entrega,
+    data_aceite,
+    data_prevista,
     cond_pagamento,
     validade_proposta,
     moeda,
@@ -358,7 +332,7 @@ app.put("/cotacoes/:id", (req, res) => {
         UPDATE cotacoes SET
           num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?, cliente_email=?,
           objetivo=?, descricao_equipamentos=?, condicoes_proposta=?, observacoes=?,
-          prazo_entrega=?, cond_pagamento=?, validade_proposta=?, moeda=?,
+          prazo_entrega=?, data_aceite=?, data_prevista=?, cond_pagamento=?, validade_proposta=?, moeda=?,
           condicoes_gerais=?, comprador=?, comprador_email=?, comprador_telefone=?,
           updated_at=datetime('now')
         WHERE id=?
@@ -374,6 +348,8 @@ app.put("/cotacoes/:id", (req, res) => {
         condicoes_proposta,
         observacoes,
         prazo_entrega,
+        data_aceite,
+        data_prevista,
         cond_pagamento,
         validade_proposta,
         moeda,
@@ -513,14 +489,14 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
       const result = db
         .prepare(
           `
-        INSERT INTO cotacoes (
-          num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
-          objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
-          prazo_entrega, cond_pagamento, validade_proposta, moeda,
-          condicoes_gerais, comprador, comprador_email, comprador_telefone,
-          status, revisao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', ?)
-      `,
+  INSERT INTO cotacoes (
+    num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
+    objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
+    prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
+    condicoes_gerais, comprador, comprador_email, comprador_telefone,
+    status, revisao
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', ?)
+`,
         )
         .run(
           current.num_cotacao,
@@ -533,6 +509,8 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
           current.condicoes_proposta,
           current.observacoes,
           current.prazo_entrega,
+          current.data_aceite,
+          current.data_prevista,
           current.cond_pagamento,
           current.validade_proposta,
           current.moeda,
@@ -597,6 +575,13 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       )
       .all(req.params.id);
 
+    const moeda = cotacao.moeda || "BRL";
+    const totalGeral = itens.reduce((sum, item) => sum + (item.total ?? 0), 0);
+    const totalGeralFormatado = totalGeral.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: moeda,
+    });
+
     const revisao = cotacao.revisao == 0 ? "Rev.0" : `Rev.${cotacao.revisao}`;
     const dataFormatada = formatarData(cotacao.data_cotacao);
 
@@ -637,15 +622,15 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     const itensHTML = itens
       .map(
         (item) => `
-      <tr>
-        <td>${item.item}</td>
-        <td>${item.quantidade ?? ""}</td>
-        <td>${item.descricao ?? ""}</td>
-        <td>${item.unidade ?? ""}</td>
-        <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
-        <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
-      </tr>
-    `,
+  <tr>
+    <td>${item.item}</td>
+    <td>${item.quantidade ?? ""}</td>
+    <td>${item.descricao ?? ""}</td>
+    <td>${item.unidade ?? ""}</td>
+    <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+    <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+  </tr>
+`,
       )
       .join("");
 
@@ -740,17 +725,21 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
             </div>
           </div>
           <div class="col">
-            <h2>CONDIÇÕES COMERCIAIS</h2>
-            <hr>
-            <div class="two-col">
-              <div class="field"><label>PRAZO DE ENTREGA</label><p>${cotacao.prazo_entrega ?? "-"}</p></div>
-              <div class="field"><label>VALIDADE DA PROPOSTA</label><p>${cotacao.validade_proposta ?? "-"}</p></div>
-            </div>
-            <div class="two-col">
-              <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${cotacao.cond_pagamento ?? "-"}</p></div>
-              <div class="field"><label>MOEDA</label><p>${cotacao.moeda ?? "BRL"}</p></div>
-            </div>
-          </div>
+  <h2>CONDIÇÕES COMERCIAIS</h2>
+  <hr>
+  <div class="two-col">
+    <div class="field"><label>PRAZO DE ENTREGA (dias após aceite)</label><p>${cotacao.prazo_entrega ?? "-"}</p></div>
+    <div class="field"><label>VALIDADE DA PROPOSTA</label><p>${cotacao.validade_proposta ?? "-"}</p></div>
+  </div>
+  <div class="two-col">
+    <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${cotacao.cond_pagamento ?? "-"}</p></div>
+    <div class="field"><label>MOEDA</label><p>${cotacao.moeda ?? "BRL"}</p></div>
+  </div>
+  <div class="two-col">
+    <div class="field"><label>DATA DE ACEITE</label><p>${formatarData(cotacao.data_aceite)}</p></div>
+    <div class="field"><label>DATA PREVISTA DE ENTREGA</label><p>${cotacao.data_prevista ?? "-"}</p></div>
+  </div>
+</div>
         </div>
 
         <h2>OBJETIVO</h2>
@@ -778,9 +767,7 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
             ${itensHTML}
           </tbody>
         </table>
-        <div class="total-geral">TOTAL GERAL: ${cotacao.moeda === "USD" ? "U$" : "R$"} ${itens
-          .reduce((sum, item) => sum + (item.total ?? 0), 0)
-          .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+<div class="total-geral">TOTAL GERAL: ${totalGeralFormatado}</div>
 
         <h2>CONDIÇÕES DA PROPOSTA</h2>
         <hr>
@@ -897,6 +884,7 @@ app.put("/pedidos/:id", (req, res) => {
     data_pedido,
     fornecedor_id,
     prazo_entrega,
+    data_prevista,
     num_proposta,
     cond_pagamento,
     observacoes,
@@ -927,7 +915,7 @@ app.put("/pedidos/:id", (req, res) => {
       db.prepare(
         `
         UPDATE pedidos SET
-          num_pedido=?, data_pedido=?, fornecedor_id=?, prazo_entrega=?,
+          num_pedido=?, data_pedido=?, fornecedor_id=?, prazo_entrega=?, data_prevista=?,
           num_proposta=?, cond_pagamento=?, observacoes=?, observacoes_tecnicas=?, aplicacao=?,
           endereco_entrega=?, comprador=?, comprador_email=?, comprador_telefone=?,
           updated_at=datetime('now')
@@ -938,6 +926,7 @@ app.put("/pedidos/:id", (req, res) => {
         data_pedido,
         fornecedor_id,
         prazo_entrega,
+        data_prevista,
         num_proposta,
         cond_pagamento,
         observacoes,
@@ -995,8 +984,8 @@ app.patch("/pedidos/:id/status", (req, res) => {
 
     // define allowed transitions
     const transicoesPermitidas = {
-      Criado: ["Em Produção", "Cancelado"],
-      "Em Produção": ["Entregue", "Cancelado"],
+      Criado: ["Enviado", "Cancelado"],
+      Enviado: ["Entregue", "Cancelado"],
       Entregue: ["Faturado", "Cancelado"],
       Faturado: [],
       Cancelado: [],
@@ -1038,22 +1027,6 @@ app.patch("/pedidos/:id/status", (req, res) => {
   }
 });
 
-// GET - fetch attachments for a pedido
-app.get("/pedidos/:id/anexos", (req, res) => {
-  try {
-    const anexos = db
-      .prepare(
-        `
-      SELECT * FROM pedido_anexos WHERE pedido_id = ? ORDER BY uploaded_at ASC
-    `,
-      )
-      .all(req.params.id);
-    res.json(anexos);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // POST - create a new pedido
 app.post("/pedidos", (req, res) => {
   const {
@@ -1061,6 +1034,7 @@ app.post("/pedidos", (req, res) => {
     data_pedido,
     fornecedor_id,
     prazo_entrega,
+    data_prevista,
     num_proposta,
     cond_pagamento,
     observacoes,
@@ -1079,19 +1053,19 @@ app.post("/pedidos", (req, res) => {
       const result = db
         .prepare(
           `
-        INSERT INTO pedidos (
-          num_pedido, data_pedido, fornecedor_id, prazo_entrega,
-          num_proposta, cond_pagamento, observacoes, observacoes_tecnicas, aplicacao,
-          endereco_entrega, comprador, comprador_email, comprador_telefone,
-          status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criado')
-      `,
+  INSERT INTO pedidos (
+    num_pedido, data_pedido, fornecedor_id, prazo_entrega, data_prevista,
+    num_proposta, cond_pagamento, observacoes, observacoes_tecnicas, aplicacao,
+    endereco_entrega, comprador, comprador_email, comprador_telefone, status
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criado')
+`,
         )
         .run(
           num_pedido,
           data_pedido,
           fornecedor_id,
           prazo_entrega,
+          data_prevista,
           num_proposta,
           cond_pagamento,
           observacoes,
@@ -1146,84 +1120,95 @@ app.post("/pedidos", (req, res) => {
   }
 });
 
-// POST - upload attachment for a pedido
-app.post("/pedidos/:id/anexos", upload.single("arquivo"), (req, res) => {
+// GET - fetch all notas fiscais for a pedido, with their linked items
+app.get("/pedidos/:id/nf", (req, res) => {
   try {
-    const pedido = db
-      .prepare(`SELECT status FROM pedidos WHERE id = ?`)
-      .get(req.params.id);
-
-    if (!pedido)
-      return res.status(404).json({ error: "Pedido não encontrado." });
-
-    // only allow attachments when status is Em Produção or later
-    const statusPermitidos = ["Em Produção", "Entregue", "Faturado"];
-    if (!statusPermitidos.includes(pedido.status)) {
-      // delete the uploaded file since we're rejecting it
-      fsSync.unlinkSync(req.file.path);
-      return res.status(403).json({
-        error:
-          "Anexos só podem ser adicionados a partir do status 'Em Produção'.",
-      });
-    }
-
-    db.prepare(
-      `
-      INSERT INTO pedido_anexos (pedido_id, nome_original, nome_arquivo, caminho, tipo, tamanho)
-      VALUES (?, ?, ?, ?, ?, ?)
+    const nfs = db
+      .prepare(
+        `
+      SELECT * FROM pedido_notas_fiscais WHERE pedido_id = ? ORDER BY created_at ASC
     `,
-    ).run(
-      req.params.id,
-      req.file.originalname,
-      req.file.filename,
-      req.file.path,
-      req.file.mimetype,
-      req.file.size,
-    );
+      )
+      .all(req.params.id);
 
-    res.json({ success: true, filename: req.file.originalname });
+    // for each NF, fetch the linked item ids
+    const result = nfs.map((nf) => {
+      const itens = db
+        .prepare(
+          `
+        SELECT pedido_item_id FROM nf_itens WHERE nf_id = ?
+      `,
+        )
+        .all(nf.id);
+      return {
+        ...nf,
+        itens: itens.map((i) => i.pedido_item_id),
+      };
+    });
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET - download/view a specific attachment
-app.get("/pedidos/anexos/:anexoId", (req, res) => {
+// POST - add a new nota fiscal linked to specific items
+app.post("/pedidos/:id/nf", (req, res) => {
+  const { numero_nf, item_ids } = req.body;
+
+  if (!numero_nf)
+    return res.status(400).json({ error: "Número da NF é obrigatório." });
+  if (!item_ids || item_ids.length === 0)
+    return res.status(400).json({ error: "Selecione pelo menos um item." });
+
   try {
-    const anexo = db
-      .prepare(`SELECT * FROM pedido_anexos WHERE id = ?`)
-      .get(req.params.anexoId);
+    const transaction = db.transaction(() => {
+      // insert the NF
+      const result = db
+        .prepare(
+          `
+        INSERT INTO pedido_notas_fiscais (pedido_id, numero_nf)
+        VALUES (?, ?)
+      `,
+        )
+        .run(req.params.id, numero_nf);
 
-    if (!anexo) return res.status(404).json({ error: "Anexo não encontrado." });
+      const nfId = result.lastInsertRowid;
 
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${anexo.nome_original}"`,
-    );
-    res.setHeader("Content-Type", anexo.tipo);
-    res.sendFile(anexo.caminho);
+      // link each selected item to this NF
+      for (const itemId of item_ids) {
+        db.prepare(
+          `
+          INSERT INTO nf_itens (nf_id, pedido_item_id) VALUES (?, ?)
+        `,
+        ).run(nfId, itemId);
+      }
+
+      return nfId;
+    });
+
+    const nfId = transaction();
+    res.json({ success: true, id: nfId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE - remove an attachment
-app.delete("/pedidos/anexos/:anexoId", (req, res) => {
+// DELETE - remove a nota fiscal and its item links
+app.delete("/pedidos/nf/:nfId", (req, res) => {
   try {
-    const anexo = db
-      .prepare(`SELECT * FROM pedido_anexos WHERE id = ?`)
-      .get(req.params.anexoId);
+    const nf = db
+      .prepare(`SELECT * FROM pedido_notas_fiscais WHERE id = ?`)
+      .get(req.params.nfId);
 
-    if (!anexo) return res.status(404).json({ error: "Anexo não encontrado." });
+    if (!nf)
+      return res.status(404).json({ error: "Nota fiscal não encontrada." });
 
-    // delete file from disk
-    if (fsSync.existsSync(anexo.caminho)) {
-      fsSync.unlinkSync(anexo.caminho);
-    }
-
-    db.prepare(`DELETE FROM pedido_anexos WHERE id = ?`).run(
-      req.params.anexoId,
+    // nf_itens will be deleted automatically via CASCADE
+    db.prepare(`DELETE FROM pedido_notas_fiscais WHERE id = ?`).run(
+      req.params.nfId,
     );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1291,23 +1276,29 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
       )
       .toString("base64");
 
+    const moeda = "BRL"; // pedidos always use BRL
+
     const itensHTML = itens
       .map(
         (item) => `
-      <tr>
-        <td>${item.item}</td>
-        <td>${item.quantidade ?? ""}</td>
-        <td>${item.descricao ?? ""}</td>
-        <td>${item.unidade ?? ""}</td>
-        <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
-        <td>${item.ipi ?? "0"}%</td>
-        <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) ?? ""}</td>
-      </tr>
-    `,
+    <tr>
+      <td>${item.item}</td>
+      <td>${item.quantidade ?? ""}</td>
+      <td>${item.descricao ?? ""}</td>
+      <td>${item.unidade ?? ""}</td>
+      <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+      <td>${item.ipi ?? "0"}%</td>
+      <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+    </tr>
+  `,
       )
       .join("");
 
     const totalGeral = itens.reduce((sum, item) => sum + (item.total ?? 0), 0);
+    const totalGeralFormatado = totalGeral.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: moeda,
+    });
 
     const html = `
       <!DOCTYPE html>
@@ -1435,7 +1426,7 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
           </tbody>
         </table>
         <div class="total-geral">
-          TOTAL GERAL: ${totalGeral.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          TOTAL GERAL: ${totalGeralFormatado}
         </div>
 
         <!-- OBSERVAÇÕES -->

@@ -15,11 +15,25 @@
     <div class="gerenciamento-container">
       <h1>PEDIDOS DE COMPRA</h1>
       <div class="consulta-controls">
-        <input
-          type="text"
-          id="busca"
-          placeholder="Buscar por número, fornecedor, status..." />
-        <button type="button" id="btn-novo-pedido">+ NOVO PEDIDO</button>
+        <div class="consulta-filters">
+          <button type="button" id="btn-refresh">🔄</button>
+          <div class="filter-group">
+            <input
+              type="text"
+              id="busca"
+              placeholder="Buscar por número, fornecedor, status..." />
+          </div>
+          <div class="filter-group">
+            <label for="filtroDe">DE</label>
+            <input type="date" id="filtroDe" />
+          </div>
+          <div class="filter-group">
+            <label for="filtroAte">ATÉ</label>
+            <input type="date" id="filtroAte" />
+          </div>
+          <button type="button" id="btn-limpar-filtros">Limpar</button>
+        </div>
+        <button type="button" id="btn-novo-pedido">+ Novo Pedido</button>
       </div>
       <table id="tabela-pedidos">
         <thead>
@@ -27,7 +41,9 @@
             <th>No. do Pedido</th>
             <th>Fornecedor</th>
             <th>Data</th>
-            <th>Prazo de Entrega</th>
+            <th id="header-data-prevista" style="cursor: pointer">
+              Data Prevista ↕
+            </th>
             <th>Status</th>
             <th>Total Geral</th>
             <th>Ações</th>

@@ -117,6 +117,20 @@ try {
 try {
   db.prepare(`ALTER TABLE pedidos ADD COLUMN comprador_telefone TEXT`).run();
 } catch (e) {}
+try {
+  db.prepare(`ALTER TABLE pedidos ADD COLUMN data_prevista TEXT`).run();
+} catch (e) {}
+try {
+  db.prepare(
+    `ALTER TABLE cotacoes ADD COLUMN prazo_entrega_dias INTEGER`,
+  ).run();
+} catch (e) {}
+try {
+  db.prepare(`ALTER TABLE cotacoes ADD COLUMN data_aceite TEXT`).run();
+} catch (e) {}
+try {
+  db.prepare(`ALTER TABLE cotacoes ADD COLUMN data_prevista TEXT`).run();
+} catch (e) {}
 
 // pedido status log - tracks every status change
 db.prepare(
@@ -147,6 +161,32 @@ db.prepare(
     tamanho INTEGER,               -- file size in bytes
     uploaded_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
+  )
+`,
+).run();
+
+// notas fiscais linked to a pedido
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS pedido_notas_fiscais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id INTEGER NOT NULL,
+    numero_nf TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
+  )
+`,
+).run();
+
+// relationship between notas fiscais and specific pedido items
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS nf_itens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nf_id INTEGER NOT NULL,
+    pedido_item_id INTEGER NOT NULL,
+    FOREIGN KEY (nf_id) REFERENCES pedido_notas_fiscais(id) ON DELETE CASCADE,
+    FOREIGN KEY (pedido_item_id) REFERENCES pedido_itens(id) ON DELETE CASCADE
   )
 `,
 ).run();
