@@ -140,16 +140,13 @@ function getMoeda() {
 const calcRow = (row) => {
   const qntText = row.querySelector(".quantidade")?.textContent || "0";
   const valText = row.querySelector(".val-unitario")?.textContent || "0";
-  const ipiText = row.querySelector(".ipi")?.textContent || "0";
 
   const qnt = parseBR(qntText);
   const valUnit = parseBR(valText);
-  const ipi = parseBR(ipiText);
 
-  const base = qnt * valUnit;
-  const total = base * (1 + ipi / 100);
+  const total = qnt * valUnit;
 
-  const cellTotal = row.cells[7];
+  const cellTotal = row.cells[6]; // no IPI column, so total is cells[6] not cells[7]
   if (cellTotal) {
     cellTotal.textContent = total.toLocaleString("pt-BR", {
       style: "currency",
@@ -404,9 +401,8 @@ function atualizarOpcoesStatus(statusAtual) {
 }
 
 function setReadOnly(isReadOnly) {
-  // disables all inputs except for statusSelect and alteradoPor
   const inputs = document.querySelectorAll(
-    "#form-cotacao input:not([readonly]):not(#alteradoPor):not(#observacaoStatus), #form-cotacao select:not(#statusSelect)",
+    "#form-cotacao input:not([readonly]):not(#alteradoPor):not(#observacaoStatus):not(#dataAceite):not(#prazoEntrega):not(#dataPrevistaCotacao), #form-cotacao select:not(#statusSelect)",
   );
   inputs.forEach((el) => (el.disabled = isReadOnly));
   quillDescricao.enable(!isReadOnly);
@@ -415,6 +411,8 @@ function setReadOnly(isReadOnly) {
   tableBody.querySelectorAll("[contenteditable]").forEach((el) => {
     el.contentEditable = !isReadOnly;
   });
+  // keep save button visible always
+  if (btnSalvar) btnSalvar.style.display = "inline-block";
 }
 
 /* ─── SAVE ─── */
@@ -513,7 +511,6 @@ if (statusSelect) {
       if (statusNovo === "Enviado ao Cliente") {
         setReadOnly(true);
         if (btnNovaRevisao) btnNovaRevisao.style.display = "inline-block";
-        if (btnSalvar) btnSalvar.style.display = "none";
       }
 
       alert(`Status alterado para "${statusNovo}" com sucesso!`);
@@ -592,7 +589,6 @@ async function carregarCotacao(id) {
   if (cotacao.status === "Enviado ao Cliente") {
     setReadOnly(true);
     if (btnNovaRevisao) btnNovaRevisao.style.display = "inline-block";
-    if (btnSalvar) btnSalvar.style.display = "none";
   } else {
     setReadOnly(false);
     if (btnNovaRevisao) btnNovaRevisao.style.display = "none";
