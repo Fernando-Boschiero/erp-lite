@@ -106,7 +106,7 @@ function getItensFromTable() {
 
 function buildPayload() {
   return {
-    num_pedido: document.getElementById("numPedido")?.value || "",
+    num_pedido: document.getElementById("numPedido")?.value.toUpperCase() || "",
     data_pedido: document.getElementById("dataPedido")?.value || "",
     fornecedor_id: document.getElementById("fornecedor")?.value || null,
     prazo_entrega: document.getElementById("prazoEntrega")?.value || "",

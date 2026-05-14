@@ -344,25 +344,29 @@ function clearForm() {
 
 function buildPayload() {
   return {
-    num_cotacao: document.getElementById("numCotacao").value,
-    data_cotacao: document.getElementById("dataCotacao").value,
-    cliente: document.getElementById("cliente").value,
-    cliente_contato: document.getElementById("clienteContato").value,
-    cliente_email: document.getElementById("clienteEmail").value,
+    num_cotacao:
+      document.getElementById("numCotacao")?.value.toUpperCase() || "",
+    data_cotacao: document.getElementById("dataCotacao")?.value || "",
+    cliente: document.getElementById("cliente")?.value || "",
+    cliente_contato: document.getElementById("clienteContato")?.value || "",
+    cliente_email: document.getElementById("clienteEmail")?.value || "",
     prazo_entrega: document.getElementById("prazoEntrega")?.value || "",
-    data_aceite: dataAceite?.value || "",
-    data_prevista: dataPrevistaCotacao?.value || "",
-    validade_proposta: document.getElementById("validadeProposta").value,
-    cond_pagamento: document.getElementById("condPagamento").value,
-    moeda: document.getElementById("moeda").value,
-    objetivo: document.getElementById("objetivo").value,
+    data_aceite: document.getElementById("dataAceite")?.value || "",
+    data_prevista: document.getElementById("dataPrevistaCotacao")?.value || "",
+    validade_proposta: document.getElementById("validadeProposta")?.value || "",
+    cond_pagamento: document.getElementById("condPagamento")?.value || "",
+    moeda: document.getElementById("moeda")?.value || "BRL",
+    objetivo: document.getElementById("objetivo")?.value || "",
     descricao_equipamentos: quillDescricao.root.innerHTML,
     condicoes_proposta: quillCondicoes.root.innerHTML,
     condicoes_gerais: quillCondicoesGerais.root.innerHTML,
-    comprador: document.getElementById("comprador").value,
-    comprador_email: document.getElementById("compradorEmail").value,
-    comprador_telefone: document.getElementById("compradorTelefone").value,
-    alterado_por: document.getElementById("alteradoPor").value,
+    comprador: document.getElementById("comprador")?.value || "",
+    comprador_email: document.getElementById("compradorEmail")?.value || "",
+    comprador_telefone:
+      document.getElementById("compradorTelefone")?.value || "",
+    status: document.getElementById("statusSelect")?.value || "Criada",
+    alterado_por: document.getElementById("alteradoPor")?.value || "",
+    observacao_status: document.getElementById("observacaoStatus")?.value || "",
     itens: getItensFromTable(),
   };
 }
@@ -411,7 +415,6 @@ function setReadOnly(isReadOnly) {
   tableBody.querySelectorAll("[contenteditable]").forEach((el) => {
     el.contentEditable = !isReadOnly;
   });
-  // keep save button visible always
   if (btnSalvar) btnSalvar.style.display = "inline-block";
 }
 
@@ -422,6 +425,25 @@ const btnNovaRevisao = document.getElementById("btn-nova-revisao");
 if (btnSalvar) {
   btnSalvar.addEventListener("click", async () => {
     const payload = buildPayload();
+    const statusAtual = document.getElementById("status").value;
+    const statusNovo = document.getElementById("statusSelect").value;
+    const statusMudou = statusNovo !== statusAtual;
+
+    // require alterado_por if status changed
+    if (statusMudou && !payload.alterado_por) {
+      alert("Por favor, informe quem está alterando o status.");
+      return;
+    }
+
+    // require observacao if moving to Pausada, Cancelada or Recusada
+    if (
+      statusMudou &&
+      ["Pausada", "Cancelada", "Recusada"].includes(statusNovo) &&
+      !payload.observacao_status
+    ) {
+      alert("Por favor, informe o motivo da alteração de status.");
+      return;
+    }
 
     if (!payload.num_cotacao) {
       alert("Por favor, informe o número da cotação.");
@@ -433,7 +455,6 @@ if (btnSalvar) {
     }
 
     if (currentCotacaoId) {
-      // update existing
       const result = await fetch(
         `http://localhost:3000/cotacoes/${currentCotacaoId}`,
         {
@@ -446,10 +467,26 @@ if (btnSalvar) {
       if (!result.ok) {
         alert(data.error);
       } else {
-        alert("Cotação atualizada com sucesso!");
+        // update the readonly status display
+        document.getElementById("status").value = statusNovo;
+        atualizarOpcoesStatus(statusNovo);
+        setReadOnly(false);
+
+        // apply correct read-only state based on new status
+        if (["Enviado ao Cliente", "Aceita", "Pausada"].includes(statusNovo)) {
+          setReadOnly(true);
+        }
+        if (statusNovo === "Enviado ao Cliente") {
+          if (btnNovaRevisao) btnNovaRevisao.style.display = "inline-block";
+        } else {
+          if (btnNovaRevisao) btnNovaRevisao.style.display = "none";
+        }
+        if (["Recusada", "Cancelada"].includes(statusNovo)) {
+          if (btnSalvar) btnSalvar.style.display = "none";
+        }
+        alert("Cotação salva com sucesso!");
       }
     } else {
-      // create new
       const result = await fetch("http://localhost:3000/cotacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -462,58 +499,6 @@ if (btnSalvar) {
         currentCotacaoId = data.id;
         alert("Cotação salva com sucesso!");
       }
-    }
-  });
-}
-
-/* ─── STATUS CHANGE ─── */
-const statusSelect = document.getElementById("statusSelect");
-
-if (statusSelect) {
-  statusSelect.addEventListener("change", async () => {
-    if (!currentCotacaoId) {
-      alert("Salve a cotação antes de alterar o status.");
-      statusSelect.value = document.getElementById("status").value;
-      return;
-    }
-
-    const alteradoPor = document.getElementById("alteradoPor").value;
-    if (!alteradoPor) {
-      alert("Por favor, informe quem está alterando o status.");
-      statusSelect.value = document.getElementById("status").value;
-      return;
-    }
-
-    const observacao = document.getElementById("observacaoStatus").value;
-    const statusNovo = statusSelect.value;
-
-    const result = await fetch(
-      `http://localhost:3000/cotacoes/${currentCotacaoId}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status_novo: statusNovo,
-          alterado_por: alteradoPor,
-          observacao,
-        }),
-      },
-    );
-
-    const data = await result.json();
-    if (!result.ok) {
-      alert(data.error);
-    } else {
-      // update the readonly status display
-      document.getElementById("status").value = statusNovo;
-
-      // if sent to client, lock the form and show nova revisao button
-      if (statusNovo === "Enviado ao Cliente") {
-        setReadOnly(true);
-        if (btnNovaRevisao) btnNovaRevisao.style.display = "inline-block";
-      }
-
-      alert(`Status alterado para "${statusNovo}" com sucesso!`);
     }
   });
 }
@@ -585,15 +570,28 @@ async function carregarCotacao(id) {
 
   populateItensTable(cotacao.itens || []);
 
-  // if already sent to client, lock the form
-  if (cotacao.status === "Enviado ao Cliente") {
+  // apply correct state based on status
+  const statusAtual = cotacao.status;
+
+  if (["Recusada", "Cancelada"].includes(statusAtual)) {
     setReadOnly(true);
-    if (btnNovaRevisao) btnNovaRevisao.style.display = "inline-block";
+    if (btnSalvar) btnSalvar.style.display = "none";
+    if (btnNovaRevisao) btnNovaRevisao.style.display = "none";
+  } else if (
+    ["Enviado ao Cliente", "Aceita", "Pausada"].includes(statusAtual)
+  ) {
+    setReadOnly(true);
+    if (btnNovaRevisao)
+      btnNovaRevisao.style.display =
+        statusAtual === "Enviado ao Cliente" ? "inline-block" : "none";
+    if (btnSalvar) btnSalvar.style.display = "inline-block";
   } else {
     setReadOnly(false);
     if (btnNovaRevisao) btnNovaRevisao.style.display = "none";
     if (btnSalvar) btnSalvar.style.display = "inline-block";
   }
+
+  atualizarOpcoesStatus(statusAtual);
 }
 
 /* ─── ON LOAD ─── */
@@ -609,17 +607,28 @@ if (cotacaoIdFromUrl) {
       setReadOnly(true);
       const banner = document.createElement("div");
       banner.style.cssText = `
-        background: #fd7e14;
-        color: white;
-        text-align: center;
-        padding: 8px;
-        font-weight: bold;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-      `;
-      banner.textContent =
-        "⚠️ Revisão anterior — somente leitura. Para editar, acesse a revisão atual.";
+  background: #fd7e14;
+  color: white;
+  font-weight: bold;
+  font-size: 0.85em;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  letter-spacing: 2px;
+  cursor: default;
+`;
+      banner.title =
+        "Revisão anterior — somente leitura. Para editar, acesse a revisão atual.";
+      banner.textContent = "⚠️ REVISÃO ANTERIOR — SOMENTE LEITURA";
       document.body.insertBefore(banner, document.body.firstChild);
       if (btnSalvar) btnSalvar.style.display = "none";
       if (btnNovaRevisao) btnNovaRevisao.style.display = "none";

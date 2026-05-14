@@ -141,7 +141,7 @@ async function renderizarTabela(lista) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${p.num_pedido}</td>
+      <td>${p.num_pedido.toUpperCase()}</td>
       <td>${p.razao_social}</td>
       <td>${dataFormatada}</td>
       <td>

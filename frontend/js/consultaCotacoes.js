@@ -55,9 +55,11 @@ function getStatusColor(status) {
 }
 
 function getDataPrevistaStyle(dataPrevista, status) {
-  if (["Aceita", "Recusada", "Cancelada", "Pausada"].includes(status)) {
-    return { cor: "#6c757d", texto: dataPrevista || "-" };
+  // only gray out if truly closed
+  if (["Recusada", "Cancelada"].includes(status)) {
+    return { cor: "#000000", texto: dataPrevista || "-" };
   }
+
   if (!dataPrevista) return { cor: "#6c757d", texto: "-" };
 
   const [dia, mes, ano] = dataPrevista.split("/");
@@ -161,7 +163,7 @@ async function renderizarTabela(lista) {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${c.num_cotacao}</td>
+      <td>${c.num_cotacao.toUpperCase()}</td>
       <td>${c.cliente}</td>
       <td>${dataFormatada}</td>
       <td>

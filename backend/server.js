@@ -299,11 +299,12 @@ app.put("/cotacoes/:id", (req, res) => {
     comprador,
     comprador_email,
     comprador_telefone,
+    alterado_por,
+    observacao_status,
     itens,
   } = req.body;
 
   try {
-    // check current status — cannot edit if already sent to client or in final status
     const current = db
       .prepare(`SELECT status FROM cotacoes WHERE id = ?`)
       .get(req.params.id);
@@ -311,98 +312,14 @@ app.put("/cotacoes/:id", (req, res) => {
     if (!current)
       return res.status(404).json({ error: "Cotação não encontrada." });
 
-    if (
-      [
-        "Enviado ao Cliente",
-        "Aceita",
-        "Pausada",
-        "Recusada",
-        "Cancelada",
-      ].includes(current.status)
-    ) {
+    const statusBloqueados = ["Recusada", "Cancelada"];
+    if (statusBloqueados.includes(current.status)) {
       return res.status(403).json({
-        error:
-          "Esta cotação não pode ser editada no status atual. Crie uma nova revisão se necessário.",
+        error: "Esta cotação está encerrada e não pode ser editada.",
       });
     }
 
-    const transaction = db.transaction(() => {
-      db.prepare(
-        `
-        UPDATE cotacoes SET
-          num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?, cliente_email=?,
-          objetivo=?, descricao_equipamentos=?, condicoes_proposta=?, observacoes=?,
-          prazo_entrega=?, data_aceite=?, data_prevista=?, cond_pagamento=?, validade_proposta=?, moeda=?,
-          condicoes_gerais=?, comprador=?, comprador_email=?, comprador_telefone=?,
-          updated_at=datetime('now')
-        WHERE id=?
-      `,
-      ).run(
-        num_cotacao,
-        data_cotacao,
-        cliente,
-        cliente_contato,
-        cliente_email,
-        objetivo,
-        descricao_equipamentos,
-        condicoes_proposta,
-        observacoes,
-        prazo_entrega,
-        data_aceite,
-        data_prevista,
-        cond_pagamento,
-        validade_proposta,
-        moeda,
-        condicoes_gerais,
-        comprador,
-        comprador_email,
-        comprador_telefone,
-        req.params.id,
-      );
-
-      // replace line items
-      db.prepare(`DELETE FROM cotacao_itens WHERE cotacao_id = ?`).run(
-        req.params.id,
-      );
-
-      for (const item of itens) {
-        db.prepare(
-          `
-          INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, total)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `,
-        ).run(
-          req.params.id,
-          item.item,
-          item.quantidade,
-          item.descricao,
-          item.unidade,
-          item.val_unitario,
-          item.total,
-        );
-      }
-    });
-
-    transaction();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PATCH - update status only, and log the change
-app.patch("/cotacoes/:id/status", (req, res) => {
-  const { status_novo, alterado_por, observacao } = req.body;
-
-  try {
-    const current = db
-      .prepare(`SELECT status FROM cotacoes WHERE id = ?`)
-      .get(req.params.id);
-
-    if (!current)
-      return res.status(404).json({ error: "Cotação não encontrada." });
-
-    // define allowed transitions
+    // validate status transition if status changed
     const transicoesPermitidas = {
       Criada: ["Em Análise Técnica", "Cancelada"],
       "Em Análise Técnica": ["Em Análise Financeira", "Criada", "Cancelada"],
@@ -418,35 +335,122 @@ app.patch("/cotacoes/:id/status", (req, res) => {
       Cancelada: [],
     };
 
-    const permitidas = transicoesPermitidas[current.status] || [];
+    const statusNovo = req.body.status || current.status;
+    const statusMudou = statusNovo !== current.status;
 
-    if (!permitidas.includes(status_novo)) {
-      return res.status(403).json({
-        error: `Não é possível mudar o status de "${current.status}" para "${status_novo}".`,
-      });
+    if (statusMudou) {
+      const permitidas = transicoesPermitidas[current.status] || [];
+      if (!permitidas.includes(statusNovo)) {
+        return res.status(403).json({
+          error: `Não é possível mudar o status de "${current.status}" para "${statusNovo}".`,
+        });
+      }
+      if (!alterado_por) {
+        return res.status(400).json({
+          error: "Por favor, informe quem está alterando o status.",
+        });
+      }
     }
 
     const transaction = db.transaction(() => {
-      // update status
-      db.prepare(
-        `
-        UPDATE cotacoes SET status = ?, updated_at = datetime('now') WHERE id = ?
-      `,
-      ).run(status_novo, req.params.id);
+      // determine which fields to update based on current status
+      if (
+        current.status === "Enviado ao Cliente" ||
+        current.status === "Aceita" ||
+        current.status === "Pausada"
+      ) {
+        // only update status and date fields
+        db.prepare(
+          `
+          UPDATE cotacoes SET
+            status=?, prazo_entrega=?, data_aceite=?, data_prevista=?,
+            updated_at=datetime('now')
+          WHERE id=?
+        `,
+        ).run(
+          statusNovo,
+          prazo_entrega,
+          data_aceite,
+          data_prevista,
+          req.params.id,
+        );
+      } else {
+        // full update
+        db.prepare(
+          `
+          UPDATE cotacoes SET
+            num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?,
+            cliente_email=?, objetivo=?, descricao_equipamentos=?,
+            condicoes_proposta=?, observacoes=?, prazo_entrega=?,
+            data_aceite=?, data_prevista=?, cond_pagamento=?,
+            validade_proposta=?, moeda=?, condicoes_gerais=?,
+            comprador=?, comprador_email=?, comprador_telefone=?,
+            status=?, updated_at=datetime('now')
+          WHERE id=?
+        `,
+        ).run(
+          num_cotacao,
+          data_cotacao,
+          cliente,
+          cliente_contato,
+          cliente_email,
+          objetivo,
+          descricao_equipamentos,
+          condicoes_proposta,
+          observacoes,
+          prazo_entrega,
+          data_aceite,
+          data_prevista,
+          cond_pagamento,
+          validade_proposta,
+          moeda,
+          condicoes_gerais,
+          comprador,
+          comprador_email,
+          comprador_telefone,
+          statusNovo,
+          req.params.id,
+        );
 
-      // log the change
-      db.prepare(
-        `
-        INSERT INTO cotacao_status_log (cotacao_id, status_anterior, status_novo, alterado_por, observacao)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-      ).run(
-        req.params.id,
-        current.status,
-        status_novo,
-        alterado_por,
-        observacao,
-      );
+        // replace line items only on full update
+        db.prepare(`DELETE FROM cotacao_itens WHERE cotacao_id = ?`).run(
+          req.params.id,
+        );
+
+        for (const item of itens) {
+          db.prepare(
+            `
+            INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, total)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `,
+          ).run(
+            req.params.id,
+            item.item,
+            item.quantidade,
+            item.descricao,
+            item.unidade,
+            item.val_unitario,
+            item.total,
+          );
+        }
+      }
+
+      // log status change if status changed
+      if (statusMudou) {
+        db.prepare(
+          `
+          INSERT INTO cotacao_status_log 
+            (cotacao_id, status_anterior, status_novo, alterado_por, observacao)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        ).run(
+          req.params.id,
+          current.status,
+          statusNovo,
+          alterado_por,
+          observacao_status || null,
+        );
+      }
     });
 
     transaction();
