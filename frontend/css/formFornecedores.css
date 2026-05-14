@@ -320,6 +320,12 @@ button:hover {
 
 /* CSS FOR CONULTA PEDIDOS AND CONSULTA COTAÇÃO*/
 
+.busca-fornecedor {
+  margin: 10px 0;
+  height: 2rem;
+  font-size: 1rem;
+}
+
 .consulta-filters {
   display: flex;
   margin: 20px 0;
