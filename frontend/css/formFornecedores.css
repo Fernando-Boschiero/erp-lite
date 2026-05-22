@@ -231,6 +231,12 @@ td:nth-of-type(1) {
   max-width: 300px;
 }
 
+#itens-table td[contenteditable] {
+  word-break: break-word;
+  white-space: normal;
+  max-width: 200px;
+}
+
 .container-footer {
   display: flex;
   flex-direction: column;

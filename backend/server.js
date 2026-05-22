@@ -1,13 +1,18 @@
 // import express framework
 const express = require("express");
 
-// import puppeteer
-const puppeteer = require("puppeteer");
+/* // import puppeteer
+const puppeteer = require("puppeteer"); */
+
+const wkhtmltopdf = require("wkhtmltopdf");
+wkhtmltopdf.command = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe";
 
 // import database connection
 const db = require("./db/db");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const { default: puppeteer } = require("puppeteer");
 
 // create an express app (your server)
 const app = express();
@@ -19,6 +24,10 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(express.static(path.join(__dirname, "../frontend")));
+
+app.get("/", (req, res) => {
+  res.redirect("/pages/erpIndex.html");
+});
 
 // Função para formatar a data em PT-BR
 function formatarData(dataStr) {
@@ -638,7 +647,7 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       )
       .join("");
 
-    // full HTML document for Puppeteer to render
+    // full HTML document for wkhtmltopdf to render
     const html = `
       <!DOCTYPE html>
       <html lang="pt">
@@ -677,13 +686,6 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
   h2 { font-size: 11pt; margin-top: 6mm; margin-bottom: 2mm; }
   hr { border: none; border-top: 1px solid #ccc; margin-bottom: 4mm; }
 
-  .container-numdata { display: flex; gap: 10mm; margin-bottom: 6mm; }
-  .column { flex: 1; }
-  .column label { font-size: 8pt; font-weight: bold; display: block; }
-  .column p { font-size: 10pt; }
-
-  .two-col { display: flex; gap: 10mm; margin-bottom: 6mm; }
-  .two-col .col { flex: 1; }
   .field label { font-size: 8pt; font-weight: bold; display: block; margin-top: 3mm; }
   .field p { font-size: 10pt; }
 
@@ -696,54 +698,93 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
   .quill-content p { margin-bottom: 2mm; }
   .quill-content ul, .quill-content ol { padding-left: 5mm; margin-bottom: 2mm; }
 
-  .responsavel { display: flex; gap: 10mm; margin-bottom: 6mm; }
-  .responsavel .field { flex: 1; }
 </style>
       </head>
       <body>
         <h1>COTAÇÃO</h1>
 
-        <div class="container-numdata">
-          <div class="column">
-            <label>NO. DA COTAÇÃO</label>
-            <p>${cotacao.num_cotacao ?? "-"}</p>
-          </div>
-          <div class="column">
-            <label>DATA</label>
-            <p>${dataFormatada}</p>
-          </div>
-          <div class="column">
-            <label>REVISÃO</label>
-            <p>${revisao}</p>
-          </div>
-        </div>
+<table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm; text-align: center;">
+  <tr>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
+      <div style="font-size: 8pt; font-weight: bold;">NO. DA COTAÇÃO</div>
+      <div>${cotacao.num_cotacao ?? "-"}</div>
+    </td>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
+      <div style="font-size: 8pt; font-weight: bold;">DATA</div>
+      <div>${dataFormatada}</div>
+    </td>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0; text-align: center;">
+      <div style="font-size: 8pt; font-weight: bold;">REVISÃO</div>
+      <div>${revisao}</div>
+    </td>
+  </tr>
+</table>
 
-        <div class="two-col">
-          <div class="col">
-            <h2>DADOS DO CLIENTE</h2>
-            <hr>
-            <div class="field"><label>CLIENTE</label><p>${cotacao.cliente ?? "-"}</p></div>
-            <div class="two-col">
-              <div class="field"><label>CONTATO</label><p>${cotacao.cliente_contato ?? "-"}</p></div>
-              <div class="field"><label>EMAIL</label><p>${cotacao.cliente_email ?? "-"}</p></div>
-            </div>
-          </div>
-          <div class="col">
-  <h2>CONDIÇÕES COMERCIAIS</h2>
-  <hr>
-  <div class="two-col">
-    <div class="field"><label>PRAZO DE ENTREGA (dias após aceite)</label><p>${cotacao.prazo_entrega ?? "-"}</p></div>
-    <div class="field"><label>VALIDADE DA PROPOSTA</label><p>${cotacao.validade_proposta ?? "-"}</p></div>
-  </div>
-  <div class="two-col">
-    <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${cotacao.cond_pagamento ?? "-"}</p></div>
-    <div class="field"><label>MOEDA</label><p>${cotacao.moeda ?? "BRL"}</p></div>
-  </div>
-  <div class="two-col">
-    <div class="field"><label>DATA DE ACEITE</label><p>${formatarData(cotacao.data_aceite)}</p></div>
-    <div class="field"><label>DATA PREVISTA DE ENTREGA</label><p>${cotacao.data_prevista ?? "-"}</p></div>
-  </div>
-</div>
+
+<table style="width:100%; border-collapse: collapse; margin-bottom: 6mm; border: none;">
+  <tr>
+    <td style="width:50%; padding-right: 5mm; vertical-align: top; border: none;">
+      <h2>DADOS DO CLIENTE</h2>
+      <hr>
+
+      <table style="width:100%; border-collapse: collapse; margin-top: 3mm; border: none;">
+      <tr>
+          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none; padding-left: 0;">
+          <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">CLIENTE</div>
+      <div>${cotacao.cliente ?? "-"}</div>
+          </td>
+      </tr>  
+      <tr>
+          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none; padding-left: 0;">
+            <div style="font-size: 8pt; font-weight: bold;">CONTATO</div>
+            <div>${cotacao.cliente_contato ?? "-"}</div>
+          </td>
+          <td style="width:50%; vertical-align: top; border: none; padding-left: 0;">
+            <div style="font-size: 8pt; font-weight: bold;">EMAIL</div>
+            <div>${cotacao.cliente_email ?? "-"}</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td style="width:50%; vertical-align: top; border: none;">
+      <h2>CONDIÇÕES COMERCIAIS</h2>
+      <hr>
+      <table style="width:100%; border-collapse: collapse; border: none;">
+        <tr>
+          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">PRAZO DE ENTREGA (dias após aceite)</div>
+            <div>${cotacao.prazo_entrega ?? "-"}</div>
+          </td>
+          <td style="width:50%; vertical-align: top; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">VALIDADE DA PROPOSTA</div>
+            <div>${cotacao.validade_proposta ?? "-"}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">CONDIÇÃO DE PAGAMENTO</div>
+            <div>${cotacao.cond_pagamento ?? "-"}</div>
+          </td>
+          <td style="width:50%; vertical-align: top; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">MOEDA</div>
+            <div>${cotacao.moeda ?? "BRL"}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA DE ACEITE</div>
+            <div>${formatarData(cotacao.data_aceite)}</div>
+          </td>
+          <td style="width:50%; vertical-align: top; border: none;">
+            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA PREVISTA DE ENTREGA</div>
+            <div>${cotacao.data_prevista ?? "-"}</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
         </div>
 
         <h2>OBJETIVO</h2>
@@ -778,12 +819,23 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
         <div class="quill-content">${cotacao.condicoes_proposta ?? ""}</div>
 
         <h2>RESPONSÁVEL PELA COTAÇÃO</h2>
-        <hr>
-        <div class="responsavel">
-          <div class="field"><label>RESPONSÁVEL</label><p>${cotacao.comprador ?? "-"}</p></div>
-          <div class="field"><label>EMAIL</label><p>${cotacao.comprador_email ?? "-"}</p></div>
-          <div class="field"><label>TELEFONE</label><p>${cotacao.comprador_telefone ?? "-"}</p></div>
-        </div>
+<hr>
+<table style="width:100%; border-collapse: collapse; border: none;">
+  <tr>
+    <td style="width:33%; padding-right: 5mm; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold;">RESPONSÁVEL</div>
+      <div>${cotacao.comprador ?? "-"}</div>
+    </td>
+    <td style="width:33%; padding-right: 5mm; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold;">EMAIL</div>
+      <div>${cotacao.comprador_email ?? "-"}</div>
+    </td>
+    <td style="width:33%; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold;">TELEFONE</div>
+      <div>${cotacao.comprador_telefone ?? "-"}</div>
+    </td>
+  </tr>
+</table>
 
         <h2>CONDIÇÕES GERAIS DE VENDA</h2>
         <hr>
@@ -793,46 +845,121 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       </html>
     `;
 
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // write temp header and footer file
+    const headerPath = path.join(__dirname, "../frontend/temp-header.html");
+    const footerPath = path.join(__dirname, "../frontend/temp-footer.html");
+    const logoFilePath = `file:///${path.join(__dirname, "../frontend/assets/Imagens/logo-veikonv-vetorizado.png").replace(/\\/g, "/")}`;
 
-    const pdf = await page.pdf({
-      format: "A4",
-      margin: { top: "40mm", bottom: "20mm", left: "10mm", right: "10mm" },
-      displayHeaderFooter: true,
-      headerTemplate: `
-  <div style="width:100%; font-family: 'Inter', Arial, sans-serif; font-size: 9pt; padding: 3mm 10mm; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
-    <img src="${logoSrc}" style="height: 12mm;" />
-    <div style="text-align: right; font-size: 8pt;">
-      <strong>VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
-      CNPJ: 19.309.792/0001-09 / IE: 714.079.490.113<br>
-      Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
-      Telefone: (19) 3846-6802 / Email: comercial@veikon.com.br
-    </div>
-  </div>
-`,
-      footerTemplate: `
-  <div style="width:100%; font-family: 'Inter', Arial, sans-serif; font-size: 8pt; padding: 2mm 10mm; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: flex-start;">
-    <div style="display: flex; flex-direction: column; gap: 1mm;">
-      <span>Cliente: ${cotacao.cliente ?? "-"}</span>
-      <span>Proposta: ${cotacao.num_cotacao ?? "-"} ${revisao}</span>
-    </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1mm;">
-      <span>Data: ${dataFormatada}</span>
-      <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
-    </div>
-  </div>
-`,
+    const headerHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;">
+  <table style="width:100%; border-bottom: 1px solid #ccc; padding-bottom: 2mm;">
+    <tr>
+      <td style="text-align: left; vertical-align: middle; width: 30%;">
+        <img src="${logoFilePath}" style="height: 14mm;" />
+      </td>
+      <td style="text-align: right; vertical-align: middle; font-size: 7pt;">
+        <strong style="font-size: 9pt;">VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
+        CNPJ: 19.309.792/0001-09 | IE: 714.079.490.113<br>
+        Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
+        Tel: (19) 3846-6802 | Email: comercial@veikon.com.br
+      </td>
+    </tr>
+  </table>
+</body></html>`;
+
+    fs.writeFileSync(headerPath, headerHtml, "utf8");
+
+    const footerHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script>
+function subst() {
+  var vars = {};
+  var query_strings_from_url = document.location.search.substring(1).split('&');
+  for (var query_string in query_strings_from_url) {
+    if (query_strings_from_url.hasOwnProperty(query_string)) {
+      var temp_var = query_strings_from_url[query_string].split('=', 2);
+      vars[temp_var[0]] = decodeURI(temp_var[1]);
+    }
+  }
+  var css_selector_classes = ['page', 'topage'];
+  for (var css_class in css_selector_classes) {
+    if (css_selector_classes.hasOwnProperty(css_class)) {
+      var element = document.getElementsByClassName(css_selector_classes[css_class]);
+      for (var j = 0; j < element.length; ++j) {
+        element[j].textContent = vars[css_selector_classes[css_class]];
+      }
+    }
+  }
+}
+</script>
+</head>
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;" onload="subst()">
+  <table style="width:100%; border-top: 1px solid #ccc; padding-top: 2mm;">
+    <tr>
+      <td style="text-align: left; vertical-align: top;">
+        <div>Cliente: ${cotacao.cliente ?? "-"}</div>
+        <div>Proposta: ${cotacao.num_cotacao ?? "-"} ${revisao}</div>
+      </td>
+      <td style="text-align: right; vertical-align: top;">
+        <div>Data: ${dataFormatada}</div>
+        <div>Página <span class="page"></span> de <span class="topage"></span></div>
+      </td>
+    </tr>
+  </table>
+</body></html>`;
+
+    fs.writeFileSync(headerPath, headerHtml, "utf8");
+    fs.writeFileSync(footerPath, footerHtml, "utf8");
+
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const chunks = [];
+      const stream = wkhtmltopdf(html, {
+        pageSize: "A4",
+        marginTop: "30mm",
+        marginBottom: "20mm",
+        marginLeft: "10mm",
+        marginRight: "10mm",
+        headerHtml: `file:///${headerPath.replace(/\\/g, "/")}`,
+        footerHtml: `file:///${footerPath.replace(/\\/g, "/")}`,
+        encoding: "UTF-8",
+        enableJavascript: true,
+        javascriptDelay: 300,
+        enableLocalFileAccess: true,
+        headerLine: false,
+        headerSpacing: 3,
+      });
+
+      stream.on("data", (chunk) => chunks.push(chunk));
+      stream.on("end", () => {
+        try {
+          fs.unlinkSync(headerPath);
+        } catch (e) {}
+        try {
+          fs.unlinkSync(footerPath);
+        } catch (e) {}
+        resolve(Buffer.concat(chunks));
+      });
+      stream.on("error", (err) => {
+        try {
+          fs.unlinkSync(headerPath);
+        } catch (e) {}
+        try {
+          fs.unlinkSync(footerPath);
+        } catch (e) {}
+        reject(err);
+      });
     });
-
-    await browser.close();
 
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="COT-${cotacao.num_cotacao}-${revisao}.pdf"`,
     });
-    res.send(pdf);
+
+    res.send(pdfBuffer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -1247,54 +1374,21 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
       .all(req.params.id);
 
     const dataFormatada = formatarData(pedido.data_pedido);
-
-    // logo and fonts
-    const logoPath = path.join(
-      __dirname,
-      "../frontend/assets/Imagens/logo-veikonv-vetorizado.png",
-    );
-    const logoBase64 = fs.readFileSync(logoPath).toString("base64");
-    const logoSrc = `data:image/png;base64,${logoBase64}`;
-
-    const fontRegular = fs
-      .readFileSync(
-        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Regular.ttf"),
-      )
-      .toString("base64");
-    const fontBold = fs
-      .readFileSync(
-        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Bold.ttf"),
-      )
-      .toString("base64");
-    const fontItalic = fs
-      .readFileSync(
-        path.join(__dirname, "../frontend/assets/fonts/Inter_18pt-Italic.ttf"),
-      )
-      .toString("base64");
-    const fontBoldItalic = fs
-      .readFileSync(
-        path.join(
-          __dirname,
-          "../frontend/assets/fonts/Inter_18pt-BoldItalic.ttf",
-        ),
-      )
-      .toString("base64");
-
-    const moeda = "BRL"; // pedidos always use BRL
+    const moeda = "BRL";
 
     const itensHTML = itens
       .map(
         (item) => `
-    <tr>
-      <td>${item.item}</td>
-      <td>${item.quantidade ?? ""}</td>
-      <td>${item.descricao ?? ""}</td>
-      <td>${item.unidade ?? ""}</td>
-      <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
-      <td>${item.ipi ?? "0"}%</td>
-      <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
-    </tr>
-  `,
+      <tr>
+        <td>${item.item}</td>
+        <td>${item.quantidade ?? ""}</td>
+        <td>${item.descricao ?? ""}</td>
+        <td>${item.unidade ?? ""}</td>
+        <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+        <td>${item.ipi ?? "0"}%</td>
+        <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+      </tr>
+    `,
       )
       .join("");
 
@@ -1310,57 +1404,20 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
       <head>
         <meta charset="UTF-8">
         <style>
-          @font-face {
-            font-family: 'Inter';
-            src: url(data:font/truetype;base64,${fontRegular});
-            font-weight: normal;
-            font-style: normal;
-          }
-          @font-face {
-            font-family: 'Inter';
-            src: url(data:font/truetype;base64,${fontBold});
-            font-weight: bold;
-            font-style: normal;
-          }
-          @font-face {
-            font-family: 'Inter';
-            src: url(data:font/truetype;base64,${fontItalic});
-            font-weight: normal;
-            font-style: italic;
-          }
-          @font-face {
-            font-family: 'Inter';
-            src: url(data:font/truetype;base64,${fontBoldItalic});
-            font-weight: bold;
-            font-style: italic;
-          }
-
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #000; }
-
+          body { font-family: Arial, sans-serif; font-size: 10pt; color: #000; }
           h1 { font-size: 16pt; text-align: center; margin-bottom: 8mm; }
           h2 { font-size: 11pt; margin-top: 6mm; margin-bottom: 2mm; font-weight: bold; }
           hr { border: none; border-top: 1px solid #ccc; margin-bottom: 4mm; }
-
-          .container-numdata { display: flex; gap: 10mm; margin-bottom: 6mm; }
-          .column { flex: 1; }
-          .column label { font-size: 8pt; font-weight: bold; display: block; }
-          .column p { font-size: 10pt; }
-
-          .two-col { display: flex; gap: 10mm; margin-bottom: 6mm; }
-          .two-col .col { flex: 1; }
+          b, strong, th, label { letter-spacing: 0.5px; }
           .field { margin-bottom: 3mm; }
           .field label { font-size: 8pt; font-weight: bold; display: block; }
           .field p { font-size: 10pt; }
-
           table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 9pt; }
           th { background: #f0f0f0; padding: 2mm 3mm; text-align: left; border: 1px solid #ccc; font-size: 8pt; }
           td { padding: 2mm 3mm; border: 1px solid #ccc; }
-
           .total-geral { text-align: right; font-weight: bold; font-size: 11pt; margin-bottom: 6mm; }
           .observacoes { margin-bottom: 6mm; line-height: 1.5; }
-          .responsavel { display: flex; gap: 10mm; margin-bottom: 6mm; }
-          .responsavel .field { flex: 1; }
         </style>
       </head>
       <body>
@@ -1368,47 +1425,70 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
         <h1>PEDIDO DE COMPRA</h1>
 
         <!-- IDENTIFICATION -->
-        <div class="container-numdata">
-          <div class="column">
-            <label>NO. DO PEDIDO</label>
-            <p>${pedido.num_pedido ?? "-"}</p>
-          </div>
-          <div class="column">
-            <label>DATA</label>
-            <p>${dataFormatada}</p>
-          </div>
-          <div class="column">
-            <label>NO. DA PROPOSTA</label>
-            <p>${pedido.num_proposta ?? "-"}</p>
-          </div>
-        </div>
+        <table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm; text-align: center;">
+          <tr>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
+              <div style="font-size: 8pt; font-weight: bold;">NO. DO PEDIDO</div>
+              <div>${pedido.num_pedido ?? "-"}</div>
+            </td>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
+              <div style="font-size: 8pt; font-weight: bold;">DATA</div>
+              <div>${dataFormatada}</div>
+            </td>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0; text-align: center;">
+              <div style="font-size: 8pt; font-weight: bold;">NO. DA PROPOSTA</div>
+              <div>${pedido.num_proposta ?? "-"}</div>
+            </td>
+          </tr>
+        </table>
 
         <!-- SUPPLIER AND COMMERCIAL CONDITIONS -->
-        <div class="two-col">
-          <div class="col">
-            <h2>DADOS DO FORNECEDOR</h2>
-            <hr>
-            <div class="field"><label>FORNECEDOR</label><p>${pedido.razao_social ?? "-"}</p></div>
-            <div class="two-col">
-              <div class="field"><label>CNPJ</label><p>${pedido.cnpj ?? "-"}</p></div>
-              <div class="field"><label>IE</label><p>${pedido.ie ?? "-"}</p></div>
-            </div>
-            <div class="field"><label>ENDEREÇO</label><p>${pedido.rua ?? "-"}</p></div>
-            <div class="two-col">
-              <div class="field"><label>BAIRRO</label><p>${pedido.bairro ?? "-"}</p></div>
-              <div class="field"><label>CIDADE</label><p>${pedido.cidade ?? "-"}</p></div>
-              <div class="field"><label>ESTADO</label><p>${pedido.estado ?? "-"}</p></div>
-            </div>
-          </div>
-          <div class="col">
-            <h2>CONDIÇÕES COMERCIAIS</h2>
-            <hr>
-            <div class="field"><label>PRAZO DE ENTREGA</label><p>${pedido.prazo_entrega ?? "-"}</p></div>
-            <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${pedido.cond_pagamento ?? "-"}</p></div>
-            <div class="field"><label>APLICAÇÃO</label><p>${pedido.aplicacao ?? "-"}</p></div>
-            <div class="field"><label>ENDEREÇO DE ENTREGA</label><p>${pedido.endereco_entrega ?? "-"}</p></div>
-          </div>
-        </div>
+        <table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm;">
+          <tr>
+            <td style="width:50%; padding-right: 5mm; vertical-align: top; border: none;">
+              <h2>DADOS DO FORNECEDOR</h2>
+              <hr>
+              <div class="field"><label>FORNECEDOR</label><p>${pedido.razao_social ?? "-"}</p></div>
+              <table style="width:100%; border-collapse: collapse; margin-top: 3mm; padding: 0;">
+                <tr>
+                  <td style="width:50%; vertical-align: top; border: none; padding: 0 3mm 0 0;">
+                    <div style="font-size: 8pt; font-weight: bold;">CNPJ</div>
+                    <div>${pedido.cnpj ?? "-"}</div>
+                  </td>
+                  <td style="width:50%; vertical-align: top; border: none; padding: 0;">
+                    <div style="font-size: 8pt; font-weight: bold;">IE</div>
+                    <div>${pedido.ie ?? "-"}</div>
+                  </td>
+                </tr>
+              </table>
+              <div class="field" style="margin-top: 3mm;"><label>ENDEREÇO</label><p>${pedido.rua ?? "-"}</p></div>
+              <table style="width:100%; border-collapse: collapse; margin-top: 3mm; padding: 0;">
+                <tr>
+                  <td style="width:33%; vertical-align: top; border: none; padding: 0 3mm 0 0;">
+                    <div style="font-size: 8pt; font-weight: bold;">BAIRRO</div>
+                    <div>${pedido.bairro ?? "-"}</div>
+                  </td>
+                  <td style="width:33%; vertical-align: top; border: none; padding: 0 3mm 0 0;">
+                    <div style="font-size: 8pt; font-weight: bold;">CIDADE</div>
+                    <div>${pedido.cidade ?? "-"}</div>
+                  </td>
+                  <td style="width:33%; vertical-align: top; border: none; padding: 0;">
+                    <div style="font-size: 8pt; font-weight: bold;">ESTADO</div>
+                    <div>${pedido.estado ?? "-"}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td style="width:50%; vertical-align: top; border: none;">
+              <h2>CONDIÇÕES COMERCIAIS</h2>
+              <hr>
+              <div class="field"><label>PRAZO DE ENTREGA (Dias)</label><p>${pedido.prazo_entrega ?? "-"}</p></div>
+              <div class="field"><label>CONDIÇÃO DE PAGAMENTO</label><p>${pedido.cond_pagamento ?? "-"}</p></div>
+<div class="field"><label>DATA PREVISTA DE ENTREGA</label><p>${pedido.data_prevista ?? "-"}</p></div>
+<div class="field"><label>ENDEREÇO DE ENTREGA</label><p>${pedido.endereco_entrega ?? "-"}</p></div>
+            </td>
+          </tr>
+        </table>
 
         <!-- ITEMS TABLE -->
         <h2>ITENS DO PEDIDO</h2>
@@ -1429,77 +1509,159 @@ app.get("/pedidos/:id/pdf", async (req, res) => {
             ${itensHTML}
           </tbody>
         </table>
-        <div class="total-geral">
-          TOTAL GERAL: ${totalGeralFormatado}
-        </div>
+        <div class="total-geral">TOTAL GERAL: ${totalGeralFormatado}</div>
 
         <!-- OBSERVAÇÕES -->
         <h2>OBSERVAÇÕES</h2>
         <hr>
-        <div class="observacoes">
-          <p>${pedido.observacoes ?? "-"}</p>
-        </div>
+        <div class="observacoes"><p>${pedido.observacoes ?? "-"}</p></div>
 
         <!-- OBSERVAÇÕES TÉCNICAS -->
         <h2>OBSERVAÇÕES TÉCNICAS</h2>
         <hr>
-        <div class="observacoes">
-          <p>${pedido.observacoes_tecnicas ?? "-"}</p>
-        </div>
+        <div class="observacoes"><p>${pedido.observacoes_tecnicas ?? "-"}</p></div>
+
+        <!-- APLICAÇÃO -->
+<h2>APLICAÇÃO</h2>
+<hr>
+<div class="observacoes"><p>${pedido.aplicacao ?? "-"}</p></div>
 
         <!-- RESPONSÁVEL -->
         <h2>RESPONSÁVEL PELA COMPRA</h2>
         <hr>
-        <div class="responsavel">
-          <div class="field"><label>COMPRADOR</label><p>${pedido.comprador ?? "-"}</p></div>
-          <div class="field"><label>EMAIL</label><p>${pedido.comprador_email ?? "-"}</p></div>
-          <div class="field"><label>TELEFONE</label><p>${pedido.comprador_telefone ?? "-"}</p></div>
-        </div>
+        <table style="width:100%; border-collapse: collapse; border: none;">
+          <tr>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0;">
+              <div style="font-size: 8pt; font-weight: bold;">COMPRADOR</div>
+              <div>${pedido.comprador ?? "-"}</div>
+            </td>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0;">
+              <div style="font-size: 8pt; font-weight: bold;">EMAIL</div>
+              <div>${pedido.comprador_email ?? "-"}</div>
+            </td>
+            <td style="width:33%; vertical-align: top; border: none; padding: 0;">
+              <div style="font-size: 8pt; font-weight: bold;">TELEFONE</div>
+              <div>${pedido.comprador_telefone ?? "-"}</div>
+            </td>
+          </tr>
+        </table>
 
       </body>
       </html>
     `;
 
-    const browser = await puppeteer.launch({ headless: "new" });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // write temp header and footer files
+    const headerPath = path.join(__dirname, "../frontend/temp-header.html");
+    const footerPath = path.join(__dirname, "../frontend/temp-footer.html");
+    const logoFilePath = `file:///${path.join(__dirname, "../frontend/assets/Imagens/logo-veikonv-vetorizado.png").replace(/\\/g, "/")}`;
 
-    const pdf = await page.pdf({
-      format: "A4",
-      margin: { top: "40mm", bottom: "20mm", left: "10mm", right: "10mm" },
-      displayHeaderFooter: true,
-      headerTemplate: `
-        <div style="width:100%; font-family: Arial, sans-serif; font-size: 9pt; padding: 3mm 10mm; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
-          <img src="${logoSrc}" style="height: 12mm;" />
-          <div style="text-align: right; font-size: 8pt;">
-            <strong>VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
-            CNPJ: 19.309.792/0001-09 / IE: 714.079.490.113<br>
-            Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
-            Telefone: (19) 3846-6802 / Email: comercial@veikon.com.br
-          </div>
-        </div>
-      `,
-      footerTemplate: `
-        <div style="width:100%; font-family: Arial, sans-serif; font-size: 8pt; padding: 2mm 10mm; border-top: 1px solid #ccc; display: flex; justify-content: space-between; align-items: flex-start;">
-          <div style="display: flex; flex-direction: column; gap: 1mm;">
-            <span>Fornecedor: ${pedido.razao_social ?? "-"}</span>
-            <span>Pedido: ${pedido.num_pedido ?? "-"}</span>
-          </div>
-          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 1mm;">
-            <span>Data: ${dataFormatada}</span>
-            <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
-          </div>
-        </div>
-      `,
+    const headerHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;">
+  <table style="width:100%; border-bottom: 1px solid #ccc; padding-bottom: 2mm;">
+    <tr>
+      <td style="text-align: left; vertical-align: middle; width: 30%;">
+        <img src="${logoFilePath}" style="height: 14mm;" />
+      </td>
+      <td style="text-align: right; vertical-align: middle; font-size: 7pt;">
+        <strong style="font-size: 9pt;">VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
+        CNPJ: 19.309.792/0001-09 | IE: 714.079.490.113<br>
+        Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
+        Tel: (19) 3846-6802 | Email: comercial@veikon.com.br
+      </td>
+    </tr>
+  </table>
+</body></html>`;
+
+    const footerHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script>
+function subst() {
+  var vars = {};
+  var query_strings_from_url = document.location.search.substring(1).split('&');
+  for (var query_string in query_strings_from_url) {
+    if (query_strings_from_url.hasOwnProperty(query_string)) {
+      var temp_var = query_strings_from_url[query_string].split('=', 2);
+      vars[temp_var[0]] = decodeURI(temp_var[1]);
+    }
+  }
+  var css_selector_classes = ['page', 'topage'];
+  for (var css_class in css_selector_classes) {
+    if (css_selector_classes.hasOwnProperty(css_class)) {
+      var element = document.getElementsByClassName(css_selector_classes[css_class]);
+      for (var j = 0; j < element.length; ++j) {
+        element[j].textContent = vars[css_selector_classes[css_class]];
+      }
+    }
+  }
+}
+</script>
+</head>
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;" onload="subst()">
+  <table style="width:100%; border-top: 1px solid #ccc; padding-top: 2mm;">
+    <tr>
+      <td style="text-align: left; vertical-align: top;">
+        <div>Fornecedor: ${pedido.razao_social ?? "-"}</div>
+        <div>Pedido: ${pedido.num_pedido ?? "-"}</div>
+      </td>
+      <td style="text-align: right; vertical-align: top;">
+        <div>Data: ${dataFormatada}</div>
+        <div>Página <span class="page"></span> de <span class="topage"></span></div>
+      </td>
+    </tr>
+  </table>
+</body></html>`;
+
+    fs.writeFileSync(headerPath, headerHtml, "utf8");
+    fs.writeFileSync(footerPath, footerHtml, "utf8");
+
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const chunks = [];
+      const stream = wkhtmltopdf(html, {
+        pageSize: "A4",
+        marginTop: "30mm",
+        marginBottom: "20mm",
+        marginLeft: "10mm",
+        marginRight: "10mm",
+        headerHtml: `file:///${headerPath.replace(/\\/g, "/")}`,
+        footerHtml: `file:///${footerPath.replace(/\\/g, "/")}`,
+        encoding: "UTF-8",
+        enableJavascript: true,
+        javascriptDelay: 300,
+        enableLocalFileAccess: true,
+        headerLine: false,
+        headerSpacing: 3,
+      });
+
+      stream.on("data", (chunk) => chunks.push(chunk));
+      stream.on("end", () => {
+        try {
+          fs.unlinkSync(headerPath);
+        } catch (e) {}
+        try {
+          fs.unlinkSync(footerPath);
+        } catch (e) {}
+        resolve(Buffer.concat(chunks));
+      });
+      stream.on("error", (err) => {
+        try {
+          fs.unlinkSync(headerPath);
+        } catch (e) {}
+        try {
+          fs.unlinkSync(footerPath);
+        } catch (e) {}
+        reject(err);
+      });
     });
-
-    await browser.close();
 
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="PC-${pedido.num_pedido}.pdf"`,
     });
-    res.send(pdf);
+    res.send(pdfBuffer);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
