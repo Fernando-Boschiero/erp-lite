@@ -1042,16 +1042,17 @@ app.put("/pedidos/:id", (req, res) => {
       });
     }
 
+    // replace the existing delete/reinsert block with this:
     const transaction = db.transaction(() => {
       db.prepare(
         `
-        UPDATE pedidos SET
-          num_pedido=?, data_pedido=?, fornecedor_id=?, prazo_entrega=?, data_prevista=?,
-          num_proposta=?, cond_pagamento=?, observacoes=?, observacoes_tecnicas=?, aplicacao=?,
-          endereco_entrega=?, comprador=?, comprador_email=?, comprador_telefone=?,
-          updated_at=datetime('now')
-        WHERE id=?
-      `,
+    UPDATE pedidos SET
+      num_pedido=?, data_pedido=?, fornecedor_id=?, prazo_entrega=?, data_prevista=?,
+      num_proposta=?, cond_pagamento=?, observacoes=?, observacoes_tecnicas=?, aplicacao=?,
+      endereco_entrega=?, comprador=?, comprador_email=?, comprador_telefone=?,
+      updated_at=datetime('now')
+    WHERE id=?
+  `,
       ).run(
         num_pedido,
         data_pedido,
@@ -1070,27 +1071,63 @@ app.put("/pedidos/:id", (req, res) => {
         req.params.id,
       );
 
-      // replace line items
-      db.prepare(`DELETE FROM pedido_itens WHERE pedido_id = ?`).run(
-        req.params.id,
-      );
-
-      for (const item of itens) {
-        db.prepare(
+      // get existing item IDs from database
+      const existingIds = db
+        .prepare(
           `
-          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        ).run(
-          req.params.id,
-          item.item,
-          item.quantidade,
-          item.descricao,
-          item.unidade,
-          item.val_unitario,
-          item.ipi,
-          item.total,
-        );
+    SELECT id FROM pedido_itens WHERE pedido_id = ?
+  `,
+        )
+        .all(req.params.id)
+        .map((r) => r.id);
+
+      // get incoming item IDs (null means new item)
+      const incomingIds = itens.filter((i) => i.id).map((i) => i.id);
+
+      // delete items that were removed by the user
+      const toDelete = existingIds.filter((id) => !incomingIds.includes(id));
+      for (const id of toDelete) {
+        db.prepare(`DELETE FROM pedido_itens WHERE id = ?`).run(id);
+      }
+
+      // update existing items or insert new ones
+      for (const item of itens) {
+        if (item.id) {
+          // existing item — update in place
+          db.prepare(
+            `
+        UPDATE pedido_itens SET
+          item=?, quantidade=?, descricao=?, unidade=?, val_unitario=?, ipi=?, total=?
+        WHERE id=?
+      `,
+          ).run(
+            item.item,
+            item.quantidade,
+            item.descricao,
+            item.unidade,
+            item.val_unitario,
+            item.ipi,
+            item.total,
+            item.id,
+          );
+        } else {
+          // new item — insert
+          db.prepare(
+            `
+        INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+          ).run(
+            req.params.id,
+            item.item,
+            item.quantidade,
+            item.descricao,
+            item.unidade,
+            item.val_unitario,
+            item.ipi,
+            item.total,
+          );
+        }
       }
     });
 
@@ -1286,7 +1323,6 @@ app.get("/pedidos/:id/nf", (req, res) => {
 // POST - add a new nota fiscal linked to specific items
 app.post("/pedidos/:id/nf", (req, res) => {
   const { numero_nf, item_ids } = req.body;
-
   if (!numero_nf)
     return res.status(400).json({ error: "Número da NF é obrigatório." });
   if (!item_ids || item_ids.length === 0)

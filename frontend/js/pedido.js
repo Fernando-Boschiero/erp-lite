@@ -70,6 +70,7 @@ function atualizarOpcoesStatus(statusAtual) {
 function getItensFromTable() {
   const tableBody = document.querySelector("#itens-table tbody");
   return Array.from(tableBody.rows).map((row, index) => ({
+    id: row.dataset.itemId ? parseInt(row.dataset.itemId) : null,
     item: index + 1,
     quantidade:
       parseFloat(
@@ -156,6 +157,17 @@ if (btnSalvarPedido) {
         alert(data.error);
       } else {
         alert("Pedido atualizado com sucesso!");
+        // refresh item IDs from server to keep dataset.itemId current
+        const pedidoRes = await fetch(
+          `http://localhost:3000/pedidos/${currentPedidoId}`,
+        );
+        const pedido = await pedidoRes.json();
+        const tableBody = document.querySelector("#itens-table tbody");
+        Array.from(tableBody.rows).forEach((row, index) => {
+          if (pedido.itens[index]) {
+            row.dataset.itemId = pedido.itens[index].id;
+          }
+        });
       }
     } else {
       // create new
@@ -234,19 +246,18 @@ async function carregarNFs() {
     return;
   }
 
-  // get current items from table to show descriptions
-  const tableBody = document.querySelector("#itens-table tbody");
-  const rows = Array.from(tableBody.rows);
+  // fetch itens directly from server instead of reading from DOM
+  const pedidoRes = await fetch(
+    `http://localhost:3000/pedidos/${currentPedidoId}`,
+  );
+  const pedido = await pedidoRes.json();
+  const itens = pedido.itens || [];
 
   nfs.forEach((nf) => {
-    // find item descriptions for linked items
     const itensList = nf.itens
       .map((itemId) => {
-        // find the row that matches this item id
-        const row = rows.find((r) => r.dataset.itemId == itemId);
-        return row
-          ? row.cells[3]?.textContent || `Item ${itemId}`
-          : `Item ${itemId}`;
+        const item = itens.find((i) => i.id == itemId);
+        return item ? item.descricao || `Item ${item.item}` : `Item ${itemId}`;
       })
       .join(", ");
 
@@ -260,21 +271,20 @@ async function carregarNFs() {
   });
 }
 
-function mostrarSeletorItens() {
-  const tableBody = document.querySelector("#itens-table tbody");
-  const rows = Array.from(tableBody.rows);
+async function mostrarSeletorItens() {
+  // fetch current items from server to get fresh IDs
+  const res = await fetch(`http://localhost:3000/pedidos/${currentPedidoId}`);
+  const pedido = await res.json();
+  const itens = pedido.itens || [];
 
   nfCheckboxes.innerHTML = "";
 
-  rows.forEach((row, index) => {
-    const descricao = row.cells[3]?.textContent || `Item ${index + 1}`;
-    const itemId = row.dataset.itemId;
-
+  itens.forEach((item, index) => {
     const label = document.createElement("label");
     label.style.display = "block";
     label.innerHTML = `
-      <input type="checkbox" class="nf-item-checkbox" value="${itemId}">
-      Item ${index + 1} — ${descricao}
+      <input type="checkbox" class="nf-item-checkbox" value="${item.id}">
+      Item ${index + 1} — ${item.descricao}
     `;
     nfCheckboxes.appendChild(label);
   });
@@ -283,7 +293,7 @@ function mostrarSeletorItens() {
 }
 
 if (btnAdicionarNF) {
-  btnAdicionarNF.addEventListener("click", () => {
+  btnAdicionarNF.addEventListener("click", async () => {
     if (!currentPedidoId) {
       alert("Salve o pedido antes de adicionar notas fiscais.");
       return;
@@ -292,7 +302,7 @@ if (btnAdicionarNF) {
       alert("Por favor, informe o número da NF.");
       return;
     }
-    mostrarSeletorItens();
+    await mostrarSeletorItens();
   });
 }
 
@@ -407,7 +417,7 @@ async function carregarPedido(id) {
       <td contenteditable="true">${item.descricao}</td>
       <td contenteditable="true">${item.unidade}</td>
       <td contenteditable="true" class="val-unitario">${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-      <td contenteditable="true" class="ipi">${item.ipi}</td>
+      <td contenteditable="true" class="ipi">${item.ipi != null ? String(item.ipi).replace(".", ",") : ""}</td>
       <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
     `;
     tableBody.appendChild(tr);

@@ -88,14 +88,18 @@ const calcTotalGeral = () => {
 
 if (tableBody) {
   tableBody.addEventListener("focusout", (e) => {
-    if (
-      e.target.classList.contains("quantidade") ||
-      e.target.classList.contains("ipi")
-    ) {
+    if (e.target.classList.contains("quantidade")) {
       e.target.textContent = applyNumFormatting(
         e.target.textContent,
         0,
         "1",
+      ).toLocaleString("pt-BR");
+    }
+    if (e.target.classList.contains("ipi")) {
+      e.target.textContent = applyNumFormatting(
+        e.target.textContent,
+        0,
+        "0",
       ).toLocaleString("pt-BR");
     }
     if (e.target.classList.contains("val-unitario")) {
@@ -112,17 +116,6 @@ if (tableBody) {
     if (row) {
       calcRow(row);
       calcTotalGeral();
-      console.log("rows in table:", tableBody.rows.length);
-      Array.from(tableBody.rows).forEach((row, i) => {
-        console.log(
-          `row ${i} val-unitario:`,
-          row.querySelector(".val-unitario")?.textContent,
-        );
-        console.log(
-          `row ${i} quantidade:`,
-          row.querySelector(".quantidade")?.textContent,
-        );
-      });
     }
   });
 }
