@@ -22,3 +22,11 @@ async function carregarFornecedores() {
   fornecedores = await res.json();
   return fornecedores;
 }
+
+let usuarios = [];
+
+async function carregarUsuarios() {
+  const res = await fetch("http://localhost:3000/usuarios");
+  usuarios = await res.json();
+  return usuarios;
+}

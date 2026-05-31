@@ -3,6 +3,7 @@ let currentPedidoId = null;
 
 /* ─── ELEMENTS ─── */
 const btnSalvarPedido = document.getElementById("btn-salvar-pedido");
+const btnClonarPedido = document.getElementById("btn-clonar-pedido");
 const statusPedido = document.getElementById("statusPedido");
 const statusSelect = document.getElementById("statusSelect");
 const alteradoPor = document.getElementById("alteradoPor");
@@ -18,6 +19,29 @@ const listaNFs = document.getElementById("lista-nfs");
 /* VARIAVEIS PARA CALCULO DE DATA PREVISTA */
 const prazoEntrega = document.getElementById("prazoEntrega");
 const dataPrevista = document.getElementById("dataPrevista");
+
+const responsavelSelect = document.getElementById("responsavelSelect");
+
+// load usuarios into dropdown
+carregarUsuarios().then(() => {
+  usuarios.forEach((u) => {
+    const option = document.createElement("option");
+    option.value = u.id;
+    option.textContent = u.nome;
+    if (responsavelSelect) responsavelSelect.appendChild(option);
+  });
+});
+
+// autofill fields when responsavel is selected
+if (responsavelSelect) {
+  responsavelSelect.addEventListener("change", () => {
+    const usuario = usuarios.find((u) => u.id == responsavelSelect.value);
+    if (!usuario) return;
+    document.getElementById("comprador").value = usuario.nome;
+    document.getElementById("compradorEmail").value = usuario.email;
+    document.getElementById("compradorTelefone").value = usuario.telefone;
+  });
+}
 
 /* CÁLCULO DE DATAS */
 function calcularDataPrevista() {
@@ -447,9 +471,40 @@ if (btnGerarPdf) {
   });
 }
 
+if (btnClonarPedido) {
+  btnClonarPedido.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Deseja clonar este pedido? Um novo pedido será criado com as mesmas informações.",
+      )
+    )
+      return;
+
+    const result = await fetch(
+      `http://localhost:3000/pedidos/${currentPedidoId}/clonar`,
+      { method: "POST" },
+    );
+
+    const data = await result.json();
+    if (!result.ok) {
+      alert(data.error);
+    } else {
+      // open cloned pedido in new tab
+      window.open(`../pages/formFornecedores.html?id=${data.id}`, "_blank");
+    }
+  });
+}
+
+if (btnClonarPedido) btnClonarPedido.style.display = "inline-block";
+
 /* ─── ON LOAD ─── */
 const urlParams = new URLSearchParams(window.location.search);
 const pedidoIdFromUrl = urlParams.get("id");
+
+// show clone button only when editing existing pedido
+if (pedidoIdFromUrl && btnClonarPedido) {
+  btnClonarPedido.style.display = "inline-block";
+}
 
 if (pedidoIdFromUrl) {
   currentPedidoId = parseInt(pedidoIdFromUrl);

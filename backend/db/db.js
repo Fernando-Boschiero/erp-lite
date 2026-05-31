@@ -238,4 +238,29 @@ db.prepare(
 `,
 ).run();
 
+//TABELA COM CADASTRO DE FUNCIONÁRIOS
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT,
+    telefone TEXT,
+    is_active INTEGER DEFAULT 1
+  )
+`,
+).run();
+
+// populate with initial users if table is empty
+const count = db.prepare(`SELECT COUNT(*) as count FROM usuarios`).get();
+if (count.count === 0) {
+  const insert = db.prepare(
+    `INSERT INTO usuarios (nome, email, telefone) VALUES (?, ?, ?)`,
+  );
+  insert.run("NIVALDO", "ncbarbosa@veikon.com.br", "(19) 99848-3103");
+  insert.run("ULLIANA", "adm@veikon.com.br", "(19) 99695-8070");
+  insert.run("ALEXANDER", "aveigantt@veikon.com.br", "(19) 99106-3631");
+  insert.run("ALINE", "comercial@veikon.com.br", "(19) 98152-0248");
+}
+
 module.exports = db;

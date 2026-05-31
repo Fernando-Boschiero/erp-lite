@@ -249,11 +249,15 @@ td:nth-of-type(1) {
 }
 
 .responsavel-compra {
-  margin-top: 5mm;
-  height: 10rem;
+  margin: 5mm 0;
+  height: auto;
   background-color: var(--form-color-input);
   padding: 5mm;
   border-radius: 5px;
+}
+
+.select-responsavel > select {
+  width: 50%;
 }
 
 .responsavel-compra h2 {

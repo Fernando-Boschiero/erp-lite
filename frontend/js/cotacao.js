@@ -1,3 +1,28 @@
+const responsavelSelectCotacao = document.getElementById("responsavelSelect");
+
+// load usuarios into dropdown
+carregarUsuarios().then(() => {
+  usuarios.forEach((u) => {
+    const option = document.createElement("option");
+    option.value = u.id;
+    option.textContent = u.nome;
+    if (responsavelSelectCotacao) responsavelSelectCotacao.appendChild(option);
+  });
+});
+
+// autofill fields when responsavel is selected
+if (responsavelSelectCotacao) {
+  responsavelSelectCotacao.addEventListener("change", () => {
+    const usuario = usuarios.find(
+      (u) => u.id == responsavelSelectCotacao.value,
+    );
+    if (!usuario) return;
+    document.getElementById("comprador").value = usuario.nome;
+    document.getElementById("compradorEmail").value = usuario.email;
+    document.getElementById("compradorTelefone").value = usuario.telefone;
+  });
+}
+
 // VARIAVEIS CALCULO DATA ENTREGA
 const prazoEntregaCotacao = document.getElementById("prazoEntrega");
 const dataAceite = document.getElementById("dataAceite");

@@ -1008,6 +1008,91 @@ app.get("/pedidos/:id", (req, res) => {
   res.json({ ...pedido, itens, statusLog });
 });
 
+// POST - clone an existing pedido
+app.post("/pedidos/:id/clonar", (req, res) => {
+  try {
+    const pedido = db
+      .prepare(`SELECT * FROM pedidos WHERE id = ?`)
+      .get(req.params.id);
+
+    if (!pedido)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    const itens = db
+      .prepare(
+        `
+      SELECT * FROM pedido_itens WHERE pedido_id = ? ORDER BY item ASC
+    `,
+      )
+      .all(req.params.id);
+
+    const transaction = db.transaction(() => {
+      // insert cloned pedido with cleared num_pedido, today's date, and reset status
+      const result = db
+        .prepare(
+          `
+        INSERT INTO pedidos (
+          num_pedido, data_pedido, fornecedor_id, prazo_entrega, data_prevista,
+          num_proposta, cond_pagamento, observacoes, observacoes_tecnicas, aplicacao,
+          endereco_entrega, comprador, comprador_email, comprador_telefone, status
+        ) VALUES (?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criado')
+      `,
+        )
+        .run(
+          "",
+          pedido.fornecedor_id,
+          pedido.prazo_entrega,
+          pedido.data_prevista,
+          pedido.num_proposta,
+          pedido.cond_pagamento,
+          pedido.observacoes,
+          pedido.observacoes_tecnicas,
+          pedido.aplicacao,
+          pedido.endereco_entrega,
+          pedido.comprador,
+          pedido.comprador_email,
+          pedido.comprador_telefone,
+        );
+
+      const novoPedidoId = result.lastInsertRowid;
+
+      // copy all items
+      for (const item of itens) {
+        db.prepare(
+          `
+          INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          novoPedidoId,
+          item.item,
+          item.quantidade,
+          item.descricao,
+          item.unidade,
+          item.val_unitario,
+          item.ipi,
+          item.total,
+        );
+      }
+
+      // log initial status
+      db.prepare(
+        `
+        INSERT INTO pedido_status_log (pedido_id, status_anterior, status_novo, alterado_por)
+        VALUES (?, null, 'Criado', 'Sistema - Clonagem')
+      `,
+      ).run(novoPedidoId);
+
+      return novoPedidoId;
+    });
+
+    const novoPedidoId = transaction();
+    res.json({ success: true, id: novoPedidoId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT - update existing pedido
 app.put("/pedidos/:id", (req, res) => {
   const {
@@ -1702,6 +1787,12 @@ function subst() {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// GET - FETCH ALL REGISTERED/ACTIVE USERS FROM DB
+app.get("/usuarios", (req, res) => {
+  const rows = db.prepare(`SELECT * FROM usuarios WHERE is_active = 1`).all();
+  res.json(rows);
 });
 
 // start the server
