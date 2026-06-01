@@ -77,14 +77,14 @@ db.prepare(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     -- Identification
-    num_cotacao TEXT NOT NULL,        -- e.g. COT-BRICAPAR-2026-1974
+    num_cotacao TEXT NOT NULL,        -- e.g. COT-CLIENTE-2026-1974
     revisao INTEGER NOT NULL DEFAULT 0, -- 0 = original, 1 = Rev.1, etc.
     status TEXT NOT NULL DEFAULT 'Criada', -- Criada | Em Análise Técnica | Em Análise Financeira | Enviado ao Cliente
 
     -- Client info
     cliente TEXT NOT NULL,            -- free text for now, until clientes table exists
-    cliente_contato TEXT,             -- e.g. Sr. Marcelo Solis
-    cliente_email TEXT,               -- e.g. marcelo.solis@cliente.com
+    cliente_contato TEXT,             -- e.g. Sr. Nome do Cliente
+    cliente_email TEXT,               -- e.g. cliente@empresa.com
 
     -- Document content
     objetivo TEXT,                    -- free text / rich text (Quill HTML)
@@ -250,17 +250,5 @@ db.prepare(
   )
 `,
 ).run();
-
-// populate with initial users if table is empty
-const count = db.prepare(`SELECT COUNT(*) as count FROM usuarios`).get();
-if (count.count === 0) {
-  const insert = db.prepare(
-    `INSERT INTO usuarios (nome, email, telefone) VALUES (?, ?, ?)`,
-  );
-  insert.run("NIVALDO", "ncbarbosa@veikon.com.br", "(19) 99848-3103");
-  insert.run("ULLIANA", "adm@veikon.com.br", "(19) 99695-8070");
-  insert.run("ALEXANDER", "aveigantt@veikon.com.br", "(19) 99106-3631");
-  insert.run("ALINE", "comercial@veikon.com.br", "(19) 98152-0248");
-}
 
 module.exports = db;
