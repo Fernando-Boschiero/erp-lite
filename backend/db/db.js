@@ -238,7 +238,7 @@ db.prepare(
 `,
 ).run();
 
-//TABELA COM CADASTRO DE FUNCIONÁRIOS
+// TABELA COM CADASTRO DE FUNCIONÁRIOS
 db.prepare(
   `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -247,6 +247,77 @@ db.prepare(
     email TEXT,
     telefone TEXT,
     is_active INTEGER DEFAULT 1
+  )
+`,
+).run();
+
+// NOTAS FISCAIS - tabela principal (substitui pedido_notas_fiscais)
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS notas_fiscais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pedido_id INTEGER,
+    fornecedor_id INTEGER,
+    nNF TEXT NOT NULL,
+    dhEmi TEXT,
+    xNome TEXT,
+    status_pagamento TEXT DEFAULT 'Aberta',
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE SET NULL,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL
+  )
+`,
+).run();
+
+// ITENS DA NF com impostos
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS nf_itens_fiscal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nf_id INTEGER NOT NULL,
+    pedido_item_id INTEGER,
+    cProd TEXT,
+    xProd TEXT,
+    NCM TEXT,
+    uCom TEXT,
+    qCom REAL,
+    vUnCom REAL,
+    vProd REAL,
+    uTrib TEXT,
+    qTrib REAL,
+    vUnTrib REAL,
+    nItemPed TEXT,
+    icms_vBC REAL,
+    icms_pICMS REAL,
+    icms_vICMS REAL,
+    ipi_vBC REAL,
+    ipi_pIPI REAL,
+    ipi_vIPI REAL,
+    pis_vBC REAL,
+    pis_pPIS REAL,
+    pis_vPIS REAL,
+    cofins_vBC REAL,
+    cofins_pCOFINS REAL,
+    cofins_vCOFINS REAL,
+    total_impostos REAL,
+    FOREIGN KEY (nf_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE,
+    FOREIGN KEY (pedido_item_id) REFERENCES pedido_itens(id) ON DELETE SET NULL
+  )
+`,
+).run();
+
+// DUPLICATAS - parcelas de pagamento
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS nf_duplicatas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nf_id INTEGER NOT NULL,
+    nDup TEXT,
+    dVenc TEXT,
+    vDup REAL,
+    status TEXT DEFAULT 'Aberta',
+    data_pagamento TEXT,
+    FOREIGN KEY (nf_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE
   )
 `,
 ).run();

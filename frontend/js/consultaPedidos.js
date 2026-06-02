@@ -29,15 +29,13 @@ function formatarData(dataStr) {
 function getStatusColor(status) {
   switch (status) {
     case "Criado":
-      return "#6c757d";
-    case "Enviado":
-      return "#fd7e14";
-    case "Entregue":
-      return "#0d6efd";
-    case "Faturado":
-      return "#198754";
+      return "#6c757d"; // gray
+    case "Recebido Parcialmente":
+      return "#fd7e14"; // orange
+    case "Recebido":
+      return "#198754"; // green
     case "Cancelado":
-      return "#dc3545";
+      return "#dc3545"; // red
     default:
       return "#000";
   }

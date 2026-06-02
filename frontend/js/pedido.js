@@ -72,10 +72,9 @@ prazoEntrega?.addEventListener("input", calcularDataPrevista);
 
 /* ─── STATUS ─── */
 const transicoesPermitidas = {
-  Criado: ["Enviado", "Cancelado"],
-  Enviado: ["Entregue", "Cancelado"],
-  Entregue: ["Faturado", "Cancelado"],
-  Faturado: [],
+  Criado: ["Recebido", "Recebido Parcialmente", "Cancelado"],
+  "Recebido Parcialmente": ["Recebido", "Cancelado"],
+  Recebido: [],
   Cancelado: [],
 };
 

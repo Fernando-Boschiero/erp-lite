@@ -1121,7 +1121,7 @@ app.put("/pedidos/:id", (req, res) => {
     if (!current)
       return res.status(404).json({ error: "Pedido não encontrado." });
 
-    if (["Faturado", "Cancelado"].includes(current.status)) {
+    if (["Recebido", "Cancelado"].includes(current.status)) {
       return res.status(403).json({
         error: "Este pedido não pode ser editado no status atual.",
       });
@@ -1237,10 +1237,9 @@ app.patch("/pedidos/:id/status", (req, res) => {
 
     // define allowed transitions
     const transicoesPermitidas = {
-      Criado: ["Enviado", "Cancelado"],
-      Enviado: ["Entregue", "Cancelado"],
-      Entregue: ["Faturado", "Cancelado"],
-      Faturado: [],
+      Criado: ["Recebido", "Recebido Parcialmente", "Cancelado"],
+      "Recebido Parcialmente": ["Recebido", "Cancelado"],
+      Recebido: [],
       Cancelado: [],
     };
 
