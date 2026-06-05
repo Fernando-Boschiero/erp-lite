@@ -253,139 +253,64 @@ if (statusSelect) {
   });
 }
 
-/* ─── NOTAS FISCAIS ─── */
-async function carregarNFs() {
+/* ─── NOTAS FISCAIS (read-only, from notas_fiscais table) ─── */
+async function carregarNFsPedido() {
   if (!currentPedidoId) return;
 
+  const secaoNFs = document.getElementById("secao-nfs");
+  const listaNFs = document.getElementById("lista-nfs-pedido");
+
+  if (!secaoNFs || !listaNFs) return;
+
+  secaoNFs.style.display = "block";
+
   const res = await fetch(
-    `http://localhost:3000/pedidos/${currentPedidoId}/nf`,
+    `http://localhost:3000/pedidos/${currentPedidoId}/notas-fiscais`,
   );
   const nfs = await res.json();
 
-  listaNFs.innerHTML = "";
-
   if (nfs.length === 0) {
-    listaNFs.innerHTML = `<p>Nenhuma nota fiscal adicionada.</p>`;
+    listaNFs.innerHTML = `<p>Nenhuma nota fiscal vinculada a este pedido.</p>`;
     return;
   }
 
-  // fetch itens directly from server instead of reading from DOM
-  const pedidoRes = await fetch(
-    `http://localhost:3000/pedidos/${currentPedidoId}`,
-  );
-  const pedido = await pedidoRes.json();
-  const itens = pedido.itens || [];
-
+  listaNFs.innerHTML = "";
   nfs.forEach((nf) => {
-    const itensList = nf.itens
-      .map((itemId) => {
-        const item = itens.find((i) => i.id == itemId);
-        return item ? item.descricao || `Item ${item.item}` : `Item ${itemId}`;
-      })
-      .join(", ");
+    const itensList =
+      nf.itens.length > 0
+        ? nf.itens
+            .map(
+              (i) => `
+              <li>
+                ${i.xProd} — 
+                ${i.qCom} ${i.uCom} — 
+                ${i.vProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </li>`,
+            )
+            .join("")
+        : "<li>Nenhum item na nota fiscal</li>";
 
     const div = document.createElement("div");
     div.className = "nf-item";
     div.innerHTML = `
-      <span><strong>NF ${nf.numero_nf}</strong> — ${itensList}</span>
-      <button type="button" class="btn-deletar-nf" data-id="${nf.id}">🗑️</button>
+      <div class="nf-header">
+        <strong>NF ${nf.nNF}</strong>
+        <span>${nf.xNome}</span>
+        <span>${
+          nf.valor_total
+            ? nf.valor_total.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })
+            : "-"
+        }</span>
+        <span class="nf-status ${nf.status_pagamento === "Paga" ? "status-paga" : "status-aberta"}">
+          ${nf.status_pagamento}
+        </span>
+      </div>
+      <ul class="nf-itens-list">${itensList}</ul>
     `;
     listaNFs.appendChild(div);
-  });
-}
-
-async function mostrarSeletorItens() {
-  // fetch current items from server to get fresh IDs
-  const res = await fetch(`http://localhost:3000/pedidos/${currentPedidoId}`);
-  const pedido = await res.json();
-  const itens = pedido.itens || [];
-
-  nfCheckboxes.innerHTML = "";
-
-  itens.forEach((item, index) => {
-    const label = document.createElement("label");
-    label.style.display = "block";
-    label.innerHTML = `
-      <input type="checkbox" class="nf-item-checkbox" value="${item.id}">
-      Item ${index + 1} — ${item.descricao}
-    `;
-    nfCheckboxes.appendChild(label);
-  });
-
-  nfItensSelector.style.display = "block";
-}
-
-if (btnAdicionarNF) {
-  btnAdicionarNF.addEventListener("click", async () => {
-    if (!currentPedidoId) {
-      alert("Salve o pedido antes de adicionar notas fiscais.");
-      return;
-    }
-    if (!numeroNF.value) {
-      alert("Por favor, informe o número da NF.");
-      return;
-    }
-    await mostrarSeletorItens();
-  });
-}
-
-if (btnConfirmarNF) {
-  btnConfirmarNF.addEventListener("click", async () => {
-    const checkboxes = document.querySelectorAll(".nf-item-checkbox:checked");
-    const itemIds = Array.from(checkboxes).map((cb) => parseInt(cb.value));
-
-    if (itemIds.length === 0) {
-      alert("Selecione pelo menos um item.");
-      return;
-    }
-
-    const result = await fetch(
-      `http://localhost:3000/pedidos/${currentPedidoId}/nf`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          numero_nf: numeroNF.value,
-          item_ids: itemIds,
-        }),
-      },
-    );
-
-    const data = await result.json();
-    if (!result.ok) {
-      alert(data.error);
-    } else {
-      numeroNF.value = "";
-      nfItensSelector.style.display = "none";
-      await carregarNFs();
-    }
-  });
-}
-
-if (btnCancelarNF) {
-  btnCancelarNF.addEventListener("click", () => {
-    numeroNF.value = "";
-    nfItensSelector.style.display = "none";
-  });
-}
-
-if (listaNFs) {
-  listaNFs.addEventListener("click", async (e) => {
-    if (e.target.classList.contains("btn-deletar-nf")) {
-      const id = e.target.dataset.id;
-      if (!confirm("Tem certeza que deseja remover esta nota fiscal?")) return;
-
-      const result = await fetch(`http://localhost:3000/pedidos/nf/${id}`, {
-        method: "DELETE",
-      });
-
-      const data = await result.json();
-      if (!result.ok) {
-        alert(data.error);
-      } else {
-        await carregarNFs();
-      }
-    }
   });
 }
 
@@ -451,7 +376,7 @@ async function carregarPedido(id) {
   // set status
   statusPedido.value = pedido.status || "Criado";
   atualizarOpcoesStatus(pedido.status || "Criado");
-  await carregarNFs();
+  await carregarNFsPedido();
 }
 
 // Ações ao clicar em Gerar PDF

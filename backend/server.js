@@ -2005,6 +2005,44 @@ app.delete("/notas-fiscais/:id", (req, res) => {
   }
 });
 
+// GET - fetch notas fiscais linked to a pedido (from new notas_fiscais table)
+app.get("/pedidos/:id/notas-fiscais", (req, res) => {
+  try {
+    const nfs = db
+      .prepare(
+        `
+      SELECT 
+        nf.id, nf.nNF, nf.xNome, nf.tipo, nf.status_pagamento,
+        SUM(i.vProd) as valor_total
+      FROM notas_fiscais nf
+      LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
+      WHERE nf.pedido_id = ?
+      GROUP BY nf.id
+      ORDER BY nf.created_at ASC
+    `,
+      )
+      .all(req.params.id);
+
+    const result = nfs.map((nf) => {
+      const itens = db
+        .prepare(
+          `
+        SELECT xProd, qCom, uCom, vProd
+        FROM nf_itens_fiscal
+        WHERE nf_id = ?
+        ORDER BY id ASC
+      `,
+        )
+        .all(nf.id);
+      return { ...nf, itens };
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
