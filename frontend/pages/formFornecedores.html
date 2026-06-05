@@ -289,29 +289,17 @@
         </div>
 
         <!-- NOTAS FISCAIS -->
-        <div id="nf-section">
+        <div class="section no-print" id="secao-nfs" style="display: none">
           <h2>NOTAS FISCAIS</h2>
           <hr />
-          <div class="container-multiple-inputs">
-            <div class="input-group">
-              <label for="numeroNF">NÚMERO DA NF</label>
-              <input type="text" id="numeroNF" placeholder="Ex: 12345" />
-            </div>
-            <div class="input-group">
-              <button type="button" id="btn-adicionar-nf">ADICIONAR NF</button>
-            </div>
+          <div id="lista-nfs-pedido">
+            <p>Nenhuma nota fiscal vinculada a este pedido.</p>
           </div>
-
-          <!-- item checkboxes will appear here when adding a NF -->
-          <div id="nf-itens-selector" style="display: none">
-            <p><strong>Selecione os itens relacionados a esta NF:</strong></p>
-            <div id="nf-checkboxes"></div>
-            <button type="button" id="btn-confirmar-nf">CONFIRMAR</button>
-            <button type="button" id="btn-cancelar-nf">CANCELAR</button>
-          </div>
-
-          <!-- list of added NFs -->
-          <div id="lista-nfs"></div>
+          <p style="font-size: 0.85em; color: #666; margin-top: 8px">
+            Para vincular uma nota fiscal, acesse
+            <strong>Financeiro → Cadastrar Nota Fiscal</strong>
+            e selecione este pedido.
+          </p>
         </div>
       </form>
       <div class="footer-disclaimer">
