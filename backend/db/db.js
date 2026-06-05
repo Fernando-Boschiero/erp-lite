@@ -258,13 +258,17 @@ db.prepare(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pedido_id INTEGER,
     fornecedor_id INTEGER,
+    cotacao_id INTEGER,
     nNF TEXT NOT NULL,
     dhEmi TEXT,
     xNome TEXT,
+    tipo TEXT,                            -- tipo da nota fiscal
     status_pagamento TEXT DEFAULT 'Aberta',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE SET NULL,
-    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    FOREIGN KEY (cotacao_id) REFERENCES cotacoes(id) ON DELETE SET NULL,
+    UNIQUE(nNF, xNome)
   )
 `,
 ).run();

@@ -1794,6 +1794,217 @@ app.get("/usuarios", (req, res) => {
   res.json(rows);
 });
 
+// ─── MÓDULO FINANCEIRO — NOTAS FISCAIS ───
+
+// GET - fetch all notas fiscais with pedido and fornecedor info
+app.get("/notas-fiscais", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT 
+        nf.*,
+        p.num_pedido,
+        p.aplicacao,
+        p.data_prevista,
+        f.razao_social
+      FROM notas_fiscais nf
+      LEFT JOIN pedidos p ON nf.pedido_id = p.id
+      LEFT JOIN fornecedores f ON nf.fornecedor_id = f.id
+      ORDER BY nf.created_at DESC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch one nota fiscal with its items and duplicatas
+app.get("/notas-fiscais/:id", (req, res) => {
+  try {
+    const nf = db
+      .prepare(
+        `
+      SELECT 
+        nf.*,
+        p.num_pedido,
+        p.aplicacao,
+        p.data_prevista,
+        f.razao_social
+      FROM notas_fiscais nf
+      LEFT JOIN pedidos p ON nf.pedido_id = p.id
+      LEFT JOIN fornecedores f ON nf.fornecedor_id = f.id
+      WHERE nf.id = ?
+    `,
+      )
+      .get(req.params.id);
+
+    if (!nf)
+      return res.status(404).json({ error: "Nota fiscal não encontrada." });
+
+    const itens = db
+      .prepare(
+        `
+      SELECT * FROM nf_itens_fiscal WHERE nf_id = ? ORDER BY id ASC
+    `,
+      )
+      .all(req.params.id);
+
+    const duplicatas = db
+      .prepare(
+        `
+      SELECT * FROM nf_duplicatas WHERE nf_id = ? ORDER BY dVenc ASC
+    `,
+      )
+      .all(req.params.id);
+
+    res.json({ ...nf, itens, duplicatas });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create a new nota fiscal with items and duplicatas
+app.post("/notas-fiscais", (req, res) => {
+  const {
+    pedido_id,
+    fornecedor_id,
+    cotacao_id,
+    nNF,
+    dhEmi,
+    xNome,
+    tipo,
+    itens,
+    duplicatas,
+  } = req.body;
+
+  if (!nNF)
+    return res.status(400).json({ error: "Número da NF é obrigatório." });
+
+  try {
+    const transaction = db.transaction(() => {
+      const result = db
+        .prepare(
+          `
+        INSERT INTO notas_fiscais (pedido_id, fornecedor_id, cotacao_id, nNF, dhEmi, xNome, tipo)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
+`,
+        )
+        .run(
+          pedido_id || null,
+          fornecedor_id || null,
+          cotacao_id || null,
+          nNF,
+          dhEmi,
+          xNome,
+          tipo || null,
+        );
+
+      const nfId = result.lastInsertRowid;
+
+      // insert items
+      for (const item of itens || []) {
+        db.prepare(
+          `
+          INSERT INTO nf_itens_fiscal (
+            nf_id, pedido_item_id, cProd, xProd, NCM, uCom, qCom, vUnCom, vProd,
+            uTrib, qTrib, vUnTrib, nItemPed,
+            icms_vBC, icms_pICMS, icms_vICMS,
+            ipi_vBC, ipi_pIPI, ipi_vIPI,
+            pis_vBC, pis_pPIS, pis_vPIS,
+            cofins_vBC, cofins_pCOFINS, cofins_vCOFINS,
+            total_impostos
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        ).run(
+          nfId,
+          item.pedido_item_id || null,
+          item.cProd,
+          item.xProd,
+          item.NCM,
+          item.uCom,
+          item.qCom,
+          item.vUnCom,
+          item.vProd,
+          item.uTrib,
+          item.qTrib,
+          item.vUnTrib,
+          item.nItemPed,
+          item.icms_vBC,
+          item.icms_pICMS,
+          item.icms_vICMS,
+          item.ipi_vBC,
+          item.ipi_pIPI,
+          item.ipi_vIPI,
+          item.pis_vBC,
+          item.pis_pPIS,
+          item.pis_vPIS,
+          item.cofins_vBC,
+          item.cofins_pCOFINS,
+          item.cofins_vCOFINS,
+          item.total_impostos || 0,
+        );
+      }
+
+      // insert duplicatas
+      for (const dup of duplicatas || []) {
+        db.prepare(
+          `
+          INSERT INTO nf_duplicatas (nf_id, nDup, dVenc, vDup)
+          VALUES (?, ?, ?, ?)
+        `,
+        ).run(nfId, dup.nDup, dup.dVenc, dup.vDup);
+      }
+
+      return nfId;
+    });
+
+    const nfId = transaction();
+    res.json({ success: true, id: nfId });
+  } catch (err) {
+    if (err.message.includes("UNIQUE constraint failed")) {
+      res.status(409).json({
+        error: "Esta nota fiscal já foi cadastrada para este fornecedor.",
+      });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// PATCH - update payment status of a duplicata
+app.patch("/notas-fiscais/duplicatas/:id/status", (req, res) => {
+  const { status, data_pagamento } = req.body;
+  try {
+    db.prepare(
+      `
+      UPDATE nf_duplicatas SET status = ?, data_pagamento = ? WHERE id = ?
+    `,
+    ).run(status, data_pagamento || null, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - remove a nota fiscal
+app.delete("/notas-fiscais/:id", (req, res) => {
+  try {
+    const nf = db
+      .prepare(`SELECT * FROM notas_fiscais WHERE id = ?`)
+      .get(req.params.id);
+    if (!nf)
+      return res.status(404).json({ error: "Nota fiscal não encontrada." });
+    // itens and duplicatas deleted via CASCADE
+    db.prepare(`DELETE FROM notas_fiscais WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

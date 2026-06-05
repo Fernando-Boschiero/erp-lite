@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Cadastro de Nota Fiscal</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>CADASTRO DE NOTA FISCAL</h1>
+
+      <!-- STEP 1: XML UPLOAD -->
+      <div id="step-upload">
+        <div class="input-group">
+          <label for="xmlInput">IMPORTAR XML DA NF-e</label>
+          <input type="file" id="xmlInput" accept=".xml" />
+          <button type="button" id="btn-processar-xml">PROCESSAR XML</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: REVIEW FORM (hidden until XML is parsed) -->
+      <div id="step-review" style="display: none">
+        <!-- CABEÇALHO -->
+        <h2>DADOS DA NOTA FISCAL</h2>
+        <hr />
+        <div class="container-multiple-inputs">
+          <div class="input-group">
+            <label for="nNF">NÚMERO DA NF</label>
+            <input type="text" id="nNF" readonly />
+          </div>
+          <div class="input-group">
+            <label for="dhEmi">DATA DE EMISSÃO</label>
+            <input type="text" id="dhEmi" readonly />
+          </div>
+          <div class="input-group">
+            <label for="xNome">EMITENTE</label>
+            <input type="text" id="xNome" readonly />
+          </div>
+        </div>
+
+        <!-- TIPO DA NF -->
+        <h2>CLASSIFICAÇÃO</h2>
+        <hr />
+        <div class="container-multiple-inputs">
+          <div class="input-group">
+            <label for="tipoNF">TIPO DA NOTA FISCAL</label>
+            <select id="tipoNF">
+              <option value="">Selecione o tipo...</option>
+              <optgroup label="Geral">
+                <option value="Ativo">Ativo</option>
+                <option value="Carta de Correção">Carta de Correção</option>
+                <option value="Complementar">Complementar</option>
+                <option value="Contas de Consumo">Contas de Consumo</option>
+                <option value="Consumível Fábrica">Consumível Fábrica</option>
+                <option value="Consumível Pessoal">Consumível Pessoal</option>
+                <option value="Demonstração">Demonstração</option>
+                <option value="Devolução">Devolução</option>
+                <option value="Entrada">Entrada</option>
+                <option value="Garantia">Garantia</option>
+                <option value="Industrialização">Industrialização</option>
+                <option value="Manutenção">Manutenção</option>
+                <option value="Material de Escritório">
+                  Material de Escritório
+                </option>
+              </optgroup>
+              <optgroup label="Vinculado a Pedido de Compra">
+                <option value="Frete">Frete</option>
+                <option value="Matéria Prima">Matéria Prima</option>
+                <option value="Serviço - Compra">Serviço - Compra</option>
+              </optgroup>
+              <optgroup label="Vinculado a Cotação (futuro)">
+                <option value="Produto Acabado">Produto Acabado</option>
+                <option value="Serviço - Venda">Serviço - Venda</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+
+        <!-- VÍNCULO AO PEDIDO (conditional) -->
+        <div id="vinculo-pedido" style="display: none">
+          <h2>VÍNCULO AO PEDIDO DE COMPRA</h2>
+          <hr />
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label for="pedidoSelect">PEDIDO DE COMPRA</label>
+              <select id="pedidoSelect">
+                <option value="">Selecione o pedido...</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="fornecedorNF">FORNECEDOR</label>
+              <input
+                type="text"
+                id="fornecedorNF"
+                readonly
+                placeholder="Preenchido automaticamente ao selecionar o pedido" />
+            </div>
+            <div class="input-group">
+              <label for="aplicacaoNF">APLICAÇÃO</label>
+              <input type="text" id="aplicacaoNF" readonly />
+            </div>
+          </div>
+        </div>
+
+        <!-- VÍNCULO À COTAÇÃO (future - shown but disabled) -->
+        <div id="vinculo-cotacao" style="display: none">
+          <h2>VÍNCULO À COTAÇÃO</h2>
+          <hr />
+          <div class="container-multiple-inputs">
+            <div class="input-group">
+              <label>COTAÇÃO</label>
+              <input
+                type="text"
+                readonly
+                placeholder="Funcionalidade disponível em breve" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ITENS DA NF -->
+        <h2>ITENS DA NOTA FISCAL</h2>
+        <hr />
+        <table id="tabela-itens-nf">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Cód. Produto</th>
+              <th>Descrição</th>
+              <th>NCM</th>
+              <th>Qtd.</th>
+              <th>Un.</th>
+              <th>Valor Unit.</th>
+              <th>Valor Total</th>
+              <th>ICMS</th>
+              <th>IPI</th>
+              <th>PIS</th>
+              <th>COFINS</th>
+            </tr>
+          </thead>
+          <tbody id="itens-nf-body"></tbody>
+        </table>
+
+        <!-- DUPLICATAS -->
+        <h2>DUPLICATAS / PARCELAS</h2>
+        <hr />
+        <table id="tabela-duplicatas">
+          <thead>
+            <tr>
+              <th>Nº Duplicata</th>
+              <th>Vencimento</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody id="duplicatas-body"></tbody>
+        </table>
+
+        <!-- TOTAL -->
+        <div class="total_geral">
+          <span>VALOR TOTAL DA NF</span>
+          <span id="total-nf">R$ -</span>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="form-actions no-print">
+          <button type="button" id="btn-salvar-nf">SALVAR NOTA FISCAL</button>
+          <button type="button" id="btn-cancelar-nf">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/cadastroNF.js"></script>
+  </body>
+</html>
