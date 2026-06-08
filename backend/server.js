@@ -2043,6 +2043,40 @@ app.get("/pedidos/:id/notas-fiscais", (req, res) => {
   }
 });
 
+// GET - controle de custos (one row per NF linked to a pedido)
+app.get("/controle-custos", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT
+        p.id as pedido_id,
+        p.num_pedido,
+        p.aplicacao,
+        p.data_prevista,
+        p.status as status_pedido,
+        p.created_at as pedido_created_at,
+        nf.id as nf_id,
+        nf.nNF,
+        nf.xNome,
+        nf.tipo,
+        nf.status_pagamento,
+        nf.dhEmi,
+        COALESCE(SUM(i.vProd), 0) as valor_nf
+      FROM pedidos p
+      LEFT JOIN notas_fiscais nf ON nf.pedido_id = p.id
+      LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
+      GROUP BY p.id, nf.id
+      ORDER BY p.aplicacao ASC, p.num_pedido ASC, nf.nNF ASC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
