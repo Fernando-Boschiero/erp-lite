@@ -9,18 +9,18 @@
       href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
       rel="stylesheet" />
     <link rel="stylesheet" href="../css/formFornecedores.css" />
-    <title>Controle de Custos</title>
+    <title>Gerenciar Notas Fiscais</title>
   </head>
   <body>
     <div class="gerenciamento-container">
-      <h1>CONTROLE DE CUSTOS</h1>
+      <h1>GERENCIAR NOTAS FISCAIS</h1>
 
       <!-- FILTERS -->
       <div class="filter-bar no-print">
         <input
           type="text"
           id="searchInput"
-          placeholder="Buscar por aplicação, pedido, fornecedor, NF..." />
+          placeholder="Buscar por NF, fornecedor, tipo, pedido..." />
         <div class="date-filter">
           <label>De:</label>
           <input type="date" id="dataInicio" />
@@ -33,33 +33,29 @@
 
       <!-- TABLE -->
       <div class="table-wrapper">
-        <table id="tabela-custos">
+        <table id="tabela-nfs">
           <thead>
             <tr>
-              <th>Aplicação</th>
-              <th>No. Pedido</th>
-              <th>Fornecedor (NF)</th>
-              <th>Previsão Entrega</th>
               <th>No. NF</th>
-              <th>Valor NF</th>
-              <th>Status Recebimento</th>
-              <th>No. Nota Venda</th>
-              <th>Data Emissão NV</th>
+              <th>Data Emissão</th>
+              <th>Fornecedor (NF)</th>
+              <th>Tipo</th>
+              <th>Valor Total</th>
               <th>Status Pagamento</th>
+              <th class="no-print">Ações</th>
             </tr>
           </thead>
-          <tbody id="tabela-custos-body"></tbody>
+          <tbody id="tabela-nfs-body"></tbody>
         </table>
       </div>
 
-      <!-- TOTALS -->
       <div class="totals-bar">
         <span>Total de registros: <strong id="total-registros">0</strong></span>
-        <span>Valor total NFs: <strong id="total-valor">R$ -</strong></span>
+        <span>Valor total: <strong id="total-valor">R$ -</strong></span>
       </div>
     </div>
 
     <script src="../js/sharedFornecedores.js"></script>
-    <script src="../js/consultaNF.js"></script>
+    <script src="../js/gerenciarNF.js"></script>
   </body>
 </html>

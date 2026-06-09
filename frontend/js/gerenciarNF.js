@@ -1,5 +1,5 @@
 /* ─── STATE ─── */
-let allRows = [];
+let allNFs = [];
 
 /* ─── ELEMENTS ─── */
 const searchInput = document.getElementById("searchInput");
@@ -7,23 +7,7 @@ const dataInicio = document.getElementById("dataInicio");
 const dataFim = document.getElementById("dataFim");
 const btnLimparFiltro = document.getElementById("btn-limpar-filtro");
 const btnAtualizar = document.getElementById("btn-atualizar");
-const tabelaBody = document.getElementById("tabela-custos-body");
-
-/* ─── DATE HELPERS ─── */
-function getStatusColor(status) {
-  switch (status) {
-    case "Criado":
-      return "#6c757d";
-    case "Recebido Parcialmente":
-      return "#fd7e14";
-    case "Recebido":
-      return "#0d6efd";
-    case "Cancelado":
-      return "#dc3545";
-    default:
-      return "#000";
-  }
-}
+const tabelaBody = document.getElementById("tabela-nfs-body");
 
 /* ─── SET DEFAULT DATE RANGE (90 days) ─── */
 function setDefaultDates() {
@@ -35,9 +19,9 @@ function setDefaultDates() {
 }
 
 /* ─── FETCH DATA ─── */
-async function carregarDados() {
-  const res = await fetch("http://localhost:3000/controle-custos");
-  allRows = await res.json();
+async function carregarNFs() {
+  const res = await fetch("http://localhost:3000/notas-fiscais");
+  allNFs = await res.json();
   renderTabela();
 }
 
@@ -50,12 +34,9 @@ function renderTabela() {
   const inicio = dataInicio.value ? new Date(dataInicio.value) : null;
   const fim = dataFim.value ? new Date(dataFim.value + "T23:59:59") : null;
 
-  const filtered = allRows.filter((row) => {
+  const filtered = allNFs.filter((nf) => {
     if (inicio || fim) {
-      const dataStr = row.pedido_created_at
-        ? row.pedido_created_at.substring(0, 10)
-        : null;
-
+      const dataStr = nf.dhEmi ? nf.dhEmi.substring(0, 10) : null;
       if (dataStr) {
         const dataRef = new Date(dataStr + "T00:00:00");
         if (inicio && dataRef < inicio) return false;
@@ -64,13 +45,12 @@ function renderTabela() {
     }
 
     const searchable = [
-      row.aplicacao,
-      row.num_pedido,
-      row.xNome,
-      row.nNF,
-      row.status_pedido,
-      row.status_pagamento,
-      row.tipo,
+      nf.nNF,
+      nf.xNome,
+      nf.tipo,
+      nf.num_pedido,
+      nf.aplicacao,
+      nf.status_pagamento,
     ]
       .join(" ")
       .toLowerCase()
@@ -83,55 +63,40 @@ function renderTabela() {
   tabelaBody.innerHTML = "";
   let totalValor = 0;
 
-  filtered.forEach((row) => {
-    totalValor += row.valor_nf || 0;
-
-    // calculate data prevista style inside forEach where row is defined
-    const dataPrevistaStyle = getDataPrevistaStyle(
-      row.data_prevista,
-      row.status_pedido,
-      ["Recebido", "Cancelado"],
-    );
+  filtered.forEach((nf) => {
+    totalValor += nf.valor_nf || 0;
+    const dataEmissao = nf.dhEmi
+      ? new Date(nf.dhEmi).toLocaleDateString("pt-BR")
+      : "-";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.aplicacao ?? "-"}</td>
       <td>
-        <a href="../pages/formFornecedores.html?id=${row.pedido_id}" 
-           target="_blank" style="color: #0d6efd; text-decoration: none;">
-          ${row.num_pedido ?? "-"}
+        <a href="../pages/editarNF.html?id=${nf.id}"
+           style="color: #0d6efd; text-decoration: none; font-weight: bold;">
+          ${nf.nNF}
         </a>
       </td>
-      <td>${row.xNome ?? "-"}</td>
-      <td style="color: ${dataPrevistaStyle.cor};">${dataPrevistaStyle.texto}</td>
-<td>${
-      row.nNF
-        ? `<a href="../pages/editarNF.html?id=${row.nf_id}" 
-        target="_blank"
-        style="color: #0d6efd; text-decoration: none; font-weight: bold;">
-       ${row.nNF}
-     </a>`
-        : "-"
-    }</td>
+      <td>${dataEmissao}</td>
+      <td>${nf.xNome ?? "-"}</td>
+      <td>${nf.tipo ?? "-"}</td>
       <td>${
-        row.valor_nf
-          ? row.valor_nf.toLocaleString("pt-BR", {
+        nf.valor_nf
+          ? nf.valor_nf.toLocaleString("pt-BR", {
               style: "currency",
               currency: "BRL",
             })
           : "-"
       }</td>
       <td>
-        <span style="color: ${getStatusColor(row.status_pedido)}; font-weight: bold;">
-          ${row.status_pedido ?? "-"}
+        <span style="color: ${nf.status_pagamento === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
+          ${nf.status_pagamento ?? "-"}
         </span>
       </td>
-      <td>-</td>
-      <td>-</td>
-      <td>
-        <span style="color: ${row.status_pagamento === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
-          ${row.status_pagamento ?? "-"}
-        </span>
+      <td class="no-print">
+        <a href="../pages/editarNF.html?id=${nf.id}">✏️</a>
+        <button type="button" class="btn-deletar-nf" data-id="${nf.id}"
+          style="background: none; border: none; cursor: pointer;">🗑️</button>
       </td>
     `;
     tabelaBody.appendChild(tr);
@@ -140,12 +105,30 @@ function renderTabela() {
   document.getElementById("total-registros").textContent = filtered.length;
   document.getElementById("total-valor").textContent =
     totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  // delete buttons
+  tabelaBody.querySelectorAll(".btn-deletar-nf").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Tem certeza que deseja excluir esta nota fiscal?")) return;
+      const result = await fetch(
+        `http://localhost:3000/notas-fiscais/${btn.dataset.id}`,
+        { method: "DELETE" },
+      );
+      const data = await result.json();
+      if (!result.ok) {
+        alert(data.error);
+      } else {
+        await carregarNFs();
+      }
+    });
+  });
 }
+
 /* ─── EVENT LISTENERS ─── */
 if (searchInput) searchInput.addEventListener("input", renderTabela);
 if (dataInicio) dataInicio.addEventListener("change", renderTabela);
 if (dataFim) dataFim.addEventListener("change", renderTabela);
-if (btnAtualizar) btnAtualizar.addEventListener("click", carregarDados);
+if (btnAtualizar) btnAtualizar.addEventListener("click", carregarNFs);
 if (btnLimparFiltro) {
   btnLimparFiltro.addEventListener("click", () => {
     searchInput.value = "";
@@ -156,4 +139,4 @@ if (btnLimparFiltro) {
 
 /* ─── INIT ─── */
 setDefaultDates();
-carregarDados();
+carregarNFs();
