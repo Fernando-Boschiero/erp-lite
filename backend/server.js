@@ -1802,23 +1802,25 @@ app.get("/notas-fiscais", (req, res) => {
     const rows = db
       .prepare(
         `
-      SELECT
-        nf.id,
-        nf.nNF,
-        nf.dhEmi,
-        nf.xNome,
-        nf.tipo,
-        nf.status_pagamento,
-        nf.created_at,
-        p.num_pedido,
-        p.aplicacao,
-        COALESCE(SUM(i.vProd), 0) as valor_nf
-      FROM notas_fiscais nf
-      LEFT JOIN pedidos p ON nf.pedido_id = p.id
-      LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
-      GROUP BY nf.id
-      ORDER BY nf.created_at DESC
-    `,
+  SELECT
+    nf.id,
+    nf.nNF,
+    nf.dhEmi,
+    nf.xNome,
+    nf.tipo,
+    nf.status_pagamento,
+    nf.created_at,
+    p.num_pedido,
+    p.aplicacao,
+    COALESCE(SUM(i.vProd), 0) as valor_nf,
+    MIN(d.dVenc) as proxima_duplicata
+  FROM notas_fiscais nf
+  LEFT JOIN pedidos p ON nf.pedido_id = p.id
+  LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
+  LEFT JOIN nf_duplicatas d ON d.nf_id = nf.id
+  GROUP BY nf.id
+  ORDER BY nf.created_at DESC
+`,
       )
       .all();
     res.json(rows);
@@ -2172,6 +2174,214 @@ app.delete("/notas-fiscais/:id", (req, res) => {
       return res.status(404).json({ error: "Nota fiscal não encontrada." });
     db.prepare(`DELETE FROM notas_fiscais WHERE id = ?`).run(req.params.id);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch duplicatas by month for calendar
+app.get("/duplicatas/calendario/:ano/:mes", (req, res) => {
+  try {
+    const { ano, mes } = req.params;
+    const mesFormatado = mes.padStart(2, "0");
+    const rows = db
+      .prepare(
+        `
+      SELECT
+        d.id,
+        d.nf_id,
+        d.nDup,
+        d.dVenc,
+        d.vDup,
+        d.status,
+        d.data_pagamento,
+        nf.nNF,
+        nf.xNome,
+        nf.tipo
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE strftime('%Y', d.dVenc) = ? 
+        AND strftime('%m', d.dVenc) = ?
+      ORDER BY d.dVenc ASC
+    `,
+      )
+      .all(ano, mesFormatado);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH - mark duplicata as Paga and recalculate NF status
+app.patch("/duplicatas/:id/status", (req, res) => {
+  const { status, data_pagamento } = req.body;
+  try {
+    const transaction = db.transaction(() => {
+      // update duplicata status
+      db.prepare(
+        `
+        UPDATE nf_duplicatas SET 
+          status = ?,
+          data_pagamento = ?
+        WHERE id = ?
+      `,
+      ).run(status, data_pagamento || null, req.params.id);
+
+      // get nf_id for this duplicata
+      const dup = db
+        .prepare(`SELECT nf_id FROM nf_duplicatas WHERE id = ?`)
+        .get(req.params.id);
+
+      if (dup) {
+        // check if all duplicatas for this NF are Paga
+        const total = db
+          .prepare(
+            `
+          SELECT COUNT(*) as count FROM nf_duplicatas WHERE nf_id = ?
+        `,
+          )
+          .get(dup.nf_id);
+
+        const pagas = db
+          .prepare(
+            `
+          SELECT COUNT(*) as count FROM nf_duplicatas 
+          WHERE nf_id = ? AND status = 'Paga'
+        `,
+          )
+          .get(dup.nf_id);
+
+        // auto-update NF status
+        const nfStatus = total.count === pagas.count ? "Paga" : "Aberta";
+        db.prepare(
+          `
+          UPDATE notas_fiscais SET status_pagamento = ? WHERE id = ?
+        `,
+        ).run(nfStatus, dup.nf_id);
+      }
+    });
+
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - add manual duplicata to a nota fiscal
+app.post("/notas-fiscais/:id/duplicatas", (req, res) => {
+  const { nDup, dVenc, vDup } = req.body;
+  if (!dVenc)
+    return res.status(400).json({ error: "Data de vencimento é obrigatória." });
+
+  try {
+    db.prepare(
+      `
+      INSERT INTO nf_duplicatas (nf_id, nDup, dVenc, vDup, status, manual)
+      VALUES (?, ?, ?, ?, 'Aberta', 1)
+    `,
+    ).run(req.params.id, nDup || "001", dVenc, vDup || 0);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - remove a manual duplicata
+app.delete("/duplicatas/:id", (req, res) => {
+  try {
+    const dup = db
+      .prepare(`SELECT nf_id, manual FROM nf_duplicatas WHERE id = ?`)
+      .get(req.params.id);
+
+    if (!dup)
+      return res.status(404).json({ error: "Duplicata não encontrada." });
+    if (!dup.manual)
+      return res.status(403).json({
+        error: "Apenas duplicatas adicionadas manualmente podem ser excluídas.",
+      });
+
+    db.prepare(`DELETE FROM nf_duplicatas WHERE id = ?`).run(req.params.id);
+
+    // recalculate NF status after deletion
+    const total = db
+      .prepare(
+        `
+      SELECT COUNT(*) as count FROM nf_duplicatas WHERE nf_id = ?
+    `,
+      )
+      .get(dup.nf_id);
+
+    let nfStatus = "Aberta";
+    if (total.count > 0) {
+      const pagas = db
+        .prepare(
+          `
+        SELECT COUNT(*) as count FROM nf_duplicatas 
+        WHERE nf_id = ? AND status = 'Paga'
+      `,
+        )
+        .get(dup.nf_id);
+      nfStatus = total.count === pagas.count ? "Paga" : "Aberta";
+    }
+
+    db.prepare(
+      `
+      UPDATE notas_fiscais SET status_pagamento = ? WHERE id = ?
+    `,
+    ).run(nfStatus, dup.nf_id);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create manual lancamento (no XML)
+app.post("/notas-fiscais/manual", (req, res) => {
+  const { xNome, tipo, valor, dVenc, dhEmi } = req.body;
+
+  if (!xNome)
+    return res.status(400).json({ error: "Fornecedor é obrigatório." });
+  if (!dVenc)
+    return res.status(400).json({ error: "Data de vencimento é obrigatória." });
+
+  try {
+    const transaction = db.transaction(() => {
+      // generate unique NF identifier using timestamp
+      const nNFManual = `MANUAL-${Date.now()}`;
+
+      const result = db
+        .prepare(
+          `
+        INSERT INTO notas_fiscais (nNF, xNome, tipo, dhEmi, status_pagamento)
+        VALUES (?, ?, ?, ?, 'Aberta')
+      `,
+        )
+        .run(nNFManual, xNome, tipo || null, dhEmi || null);
+
+      const nfId = result.lastInsertRowid;
+
+      db.prepare(
+        `
+        INSERT INTO nf_duplicatas (nf_id, nDup, dVenc, vDup, status, manual)
+        VALUES (?, '001', ?, ?, 'Aberta', 1)
+      `,
+      ).run(nfId, dVenc, valor || 0);
+
+      db.prepare(
+        `
+        INSERT INTO nf_itens_fiscal (nf_id, xProd, qCom, uCom, vUnCom, vProd)
+        VALUES (?, ?, 1, 'UN', ?, ?)
+      `,
+      ).run(nfId, xNome, valor || 0, valor || 0);
+
+      return nfId;
+    });
+
+    const nfId = transaction();
+    res.json({ success: true, id: nfId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

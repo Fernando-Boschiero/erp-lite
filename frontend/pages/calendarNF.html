@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <link rel="stylesheet" href="../css/calendarNF.css" />
+    <title>Calendário de Pagamentos</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>CALENDÁRIO DE PAGAMENTOS</h1>
+
+      <!-- FILTERS -->
+      <div class="calendar-controls no-print">
+        <button type="button" id="btn-mes-anterior">◀</button>
+        <h2 id="mes-ano-display"></h2>
+        <button type="button" id="btn-mes-proximo">▶</button>
+
+        <div class="calendar-filter">
+          <label>
+            <input type="checkbox" id="filter-abertas" checked />
+            Abertas
+          </label>
+          <label>
+            <input type="checkbox" id="filter-pagas" checked />
+            Pagas
+          </label>
+        </div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div id="calendar-grid"></div>
+
+      <!-- TOOLTIP -->
+      <div id="dup-tooltip" class="dup-tooltip" style="display: none">
+        <div id="tooltip-content"></div>
+        <button type="button" id="tooltip-pagar" style="display: none">
+          ✅ Marcar como Paga
+        </button>
+        <button type="button" id="tooltip-reabrir" style="display: none">
+          🔄 Reabrir
+        </button>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/calendarNF.js"></script>
+  </body>
+</html>
