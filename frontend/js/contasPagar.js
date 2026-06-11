@@ -25,6 +25,39 @@ async function carregarNFs() {
   renderTabela();
 }
 
+// FORMATAR DATA PARA TIMEZONE BRASIL
+function formatarDataSimples(dateStr) {
+  if (!dateStr) return "-";
+  // handle ISO datetime strings
+  if (dateStr.includes("T")) {
+    return new Date(dateStr).toLocaleDateString("pt-BR");
+  }
+  // handle YYYY-MM-DD without timezone shift
+  const [ano, mes, dia] = dateStr.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+/* ─── SORTING ─── */
+let sortCol = null;
+let sortDir = 1;
+
+document.querySelectorAll(".sort-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const col = btn.dataset.col;
+    if (sortCol === col) {
+      sortDir *= -1;
+    } else {
+      sortCol = col;
+      sortDir = 1;
+    }
+    document
+      .querySelectorAll(".sort-btn")
+      .forEach((b) => (b.textContent = "↕"));
+    btn.textContent = sortDir === 1 ? "↑" : "↓";
+    renderTabela();
+  });
+});
+
 /* ─── RENDER ─── */
 function renderTabela() {
   const search = searchInput.value
@@ -60,24 +93,33 @@ function renderTabela() {
     return searchable.includes(search);
   });
 
+  // sort if column selected
+  if (sortCol) {
+    filtered.sort((a, b) => {
+      const valA = sortCol === "dVenc" ? a.proxima_duplicata : a.dhEmi;
+      const valB = sortCol === "dVenc" ? b.proxima_duplicata : b.dhEmi;
+      if (!valA) return 1;
+      if (!valB) return -1;
+      return valA > valB ? sortDir : valA < valB ? -sortDir : 0;
+    });
+  }
+
   tabelaBody.innerHTML = "";
   let totalValor = 0;
 
   filtered.forEach((nf) => {
     totalValor += nf.valor_nf || 0;
-    const dataEmissao = nf.dhEmi
-      ? new Date(nf.dhEmi).toLocaleDateString("pt-BR")
-      : "-";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>
         <a href="../pages/editarNF.html?id=${nf.id}"
            style="color: #0d6efd; text-decoration: none; font-weight: bold;">
-          ${nf.nNF}
+          ${nf.nNF && !nf.nNF.startsWith("MANUAL-") ? nf.nNF : "Manual"}
         </a>
       </td>
-      <td>${dataEmissao}</td>
+      <td>${formatarDataSimples(nf.dhEmi)}</td>
+      <td>${formatarDataSimples(nf.proxima_duplicata)}</td>
       <td>${nf.xNome ?? "-"}</td>
       <td>${nf.tipo ?? "-"}</td>
       <td>${
@@ -121,6 +163,87 @@ function renderTabela() {
         await carregarNFs();
       }
     });
+  });
+}
+
+/* ─── MODAL NOVO LANÇAMENTO ─── */
+const btnNovoLancamento = document.getElementById("btn-novo-lancamento");
+const modalLancamento = document.getElementById("modal-lancamento");
+const btnSalvarLancamento = document.getElementById("btn-salvar-lancamento");
+const btnCancelarLancamento = document.getElementById(
+  "btn-cancelar-lancamento",
+);
+
+if (btnNovoLancamento) {
+  btnNovoLancamento.addEventListener("click", () => {
+    modalLancamento.style.display = "flex";
+  });
+}
+
+if (btnCancelarLancamento) {
+  btnCancelarLancamento.addEventListener("click", () => {
+    modalLancamento.style.display = "none";
+    limparModal();
+  });
+}
+
+// close modal on outside click
+if (modalLancamento) {
+  modalLancamento.addEventListener("click", (e) => {
+    if (e.target === modalLancamento) {
+      modalLancamento.style.display = "none";
+      limparModal();
+    }
+  });
+}
+
+function limparModal() {
+  document.getElementById("lancFornecedor").value = "";
+  document.getElementById("lancTipo").value = "";
+  document.getElementById("lancValor").value = "";
+  document.getElementById("lancDataEmissao").value = "";
+  document.getElementById("lancVencimento").value = "";
+}
+
+if (btnSalvarLancamento) {
+  btnSalvarLancamento.addEventListener("click", async () => {
+    const xNome = document.getElementById("lancFornecedor").value.trim();
+    const tipo = document.getElementById("lancTipo").value;
+    const valorRaw = document.getElementById("lancValor").value;
+    const dVenc = document.getElementById("lancVencimento").value;
+
+    if (!xNome) {
+      alert("Por favor, informe o fornecedor/descrição.");
+      return;
+    }
+    if (!tipo) {
+      alert("Por favor, selecione o tipo.");
+      return;
+    }
+    if (!dVenc) {
+      alert("Por favor, informe a data de vencimento.");
+      return;
+    }
+
+    const valor =
+      parseFloat(valorRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+
+    const dhEmi = document.getElementById("lancDataEmissao").value;
+
+    const result = await fetch("http://localhost:3000/notas-fiscais/manual", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ xNome, tipo, valor, dVenc, dhEmi }),
+    });
+
+    const data = await result.json();
+    if (!result.ok) {
+      alert(data.error);
+    } else {
+      modalLancamento.style.display = "none";
+      limparModal();
+      await carregarNFs();
+    }
   });
 }
 

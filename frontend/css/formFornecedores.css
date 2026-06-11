@@ -351,14 +351,14 @@ button:hover {
   margin-left: 10px;
 }
 
-#btn-refresh {
+.refresh-button {
   background: none;
   font-size: 2rem;
   padding: 0;
   margin-left: 0;
 }
 
-#busca {
+.campo-busca {
   width: 400px;
 }
 

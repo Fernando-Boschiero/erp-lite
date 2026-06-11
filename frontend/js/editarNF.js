@@ -89,25 +89,118 @@ async function carregarNF() {
   (nfData.duplicatas || []).forEach((dup) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${dup.nDup ?? "-"}</td>
-      <td>${
-        dup.dVenc
-          ? new Date(dup.dVenc + "T00:00:00").toLocaleDateString("pt-BR")
-          : "-"
-      }</td>
-      <td>${
-        dup.vDup
-          ? dup.vDup.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })
-          : "-"
-      }</td>
-      <td style="color: ${dup.status === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
-        ${dup.status ?? "-"}
-      </td>
-    `;
+    <td>${dup.nDup ?? "-"}</td>
+    <td>${
+      dup.dVenc
+        ? new Date(dup.dVenc + "T00:00:00").toLocaleDateString("pt-BR")
+        : "-"
+    }</td>
+    <td>${
+      dup.vDup
+        ? dup.vDup.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          })
+        : "-"
+    }</td>
+    <td style="color: ${dup.status === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
+      ${dup.status ?? "-"}
+    </td>
+    <td class="no-print">
+      ${
+        dup.manual
+          ? `
+        <button type="button" class="btn-deletar-duplicata" data-id="${dup.id}"
+          style="background: none; border: none; cursor: pointer;">🗑️</button>
+      `
+          : ""
+      }
+    </td>
+  `;
     dupBody.appendChild(tr);
+  });
+
+  // delete handlers
+  dupBody.querySelectorAll(".btn-deletar-duplicata").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Tem certeza que deseja excluir esta duplicata?")) return;
+      const result = await fetch(
+        `http://localhost:3000/duplicatas/${btn.dataset.id}`,
+        { method: "DELETE" },
+      );
+      const data = await result.json();
+      if (!result.ok) {
+        alert(data.error);
+      } else {
+        await carregarNF();
+      }
+    });
+  });
+
+  const statusDisplay = document.getElementById("statusPagamentoDisplay");
+  const statusEdit = document.getElementById("statusPagamentoEdit");
+
+  if (statusDisplay) {
+    statusDisplay.value = nfData.status_pagamento ?? "Aberta";
+    statusDisplay.style.color =
+      nfData.status_pagamento === "Paga" ? "#198754" : "#dc3545";
+    statusDisplay.style.fontWeight = "bold";
+  }
+
+  // show edit dropdown only if no duplicatas
+  if (nfData.duplicatas && nfData.duplicatas.length === 0) {
+    if (statusEdit) statusEdit.style.display = "block";
+    if (statusPagamento)
+      statusPagamento.value = nfData.status_pagamento ?? "Aberta";
+  }
+
+  const secaoAdicionarDup = document.getElementById(
+    "secao-adicionar-duplicata",
+  );
+  if (
+    secaoAdicionarDup &&
+    nfData.duplicatas &&
+    nfData.duplicatas.length === 0
+  ) {
+    secaoAdicionarDup.style.display = "block";
+  } else if (secaoAdicionarDup) {
+    secaoAdicionarDup.style.display = "none";
+  }
+}
+
+// ADD button handler
+const btnAdicionarDup = document.getElementById("btn-adicionar-duplicata");
+if (btnAdicionarDup) {
+  btnAdicionarDup.addEventListener("click", async () => {
+    const nDup = document.getElementById("novaDupNumero").value || "001";
+    const dVenc = document.getElementById("novaDupVenc").value;
+    const vDupRaw = document.getElementById("novaDupValor").value;
+
+    if (!dVenc) {
+      alert("Por favor, informe a data de vencimento.");
+      return;
+    }
+
+    // parse BR format value
+    const vDup =
+      parseFloat(vDupRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+
+    const result = await fetch(
+      `http://localhost:3000/notas-fiscais/${nfId}/duplicatas`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nDup, dVenc, vDup }),
+      },
+    );
+
+    const data = await result.json();
+    if (!result.ok) {
+      alert(data.error);
+    } else {
+      alert("Data de vencimento adicionada com sucesso!");
+      await carregarNF(); // reload to show new duplicata
+    }
   });
 }
 
@@ -159,7 +252,10 @@ if (btnSalvar) {
       pedido_id: tiposComPedido.includes(tipoNF.value)
         ? parseInt(pedidoSelect.value) || null
         : null,
-      status_pagamento: statusPagamento.value,
+      status_pagamento:
+        nfData.duplicatas && nfData.duplicatas.length === 0
+          ? statusPagamento.value
+          : undefined,
     };
 
     const result = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`, {

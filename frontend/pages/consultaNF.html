@@ -16,19 +16,28 @@
       <h1>CONTROLE DE CUSTOS</h1>
 
       <!-- FILTERS -->
-      <div class="filter-bar no-print">
-        <input
-          type="text"
-          id="searchInput"
-          placeholder="Buscar por aplicação, pedido, fornecedor, NF..." />
-        <div class="date-filter">
-          <label>De:</label>
-          <input type="date" id="dataInicio" />
-          <label>Até:</label>
-          <input type="date" id="dataFim" />
+      <div class="consulta-controls">
+        <div class="consulta-filters">
+          <button type="button" id="btn-atualizar" class="refresh-button">
+            🔄
+          </button>
+          <div class="filter-group">
+            <input
+              class="campo-busca"
+              type="text"
+              id="searchInput"
+              placeholder="Buscar por aplicação, pedido, fornecedor, NF..." />
+          </div>
+          <div class="filter-group">
+            <label>De:</label>
+            <input type="date" id="dataInicio" />
+          </div>
+          <div class="filter-group">
+            <label>Até:</label>
+            <input type="date" id="dataFim" />
+          </div>
           <button type="button" id="btn-limpar-filtro">Limpar</button>
         </div>
-        <button type="button" id="btn-atualizar">🔄</button>
       </div>
 
       <!-- TABLE -->

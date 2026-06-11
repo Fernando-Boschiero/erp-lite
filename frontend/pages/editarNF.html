@@ -69,12 +69,28 @@
             </optgroup>
           </select>
         </div>
-        <div class="input-group">
-          <label for="statusPagamento">STATUS DE PAGAMENTO</label>
-          <select id="statusPagamento">
-            <option value="Aberta">Aberta</option>
-            <option value="Paga">Paga</option>
-          </select>
+      </div>
+
+      <div class="input-group">
+        <!-- STATUS PAGAMENTO -->
+        <h2>STATUS DE PAGAMENTO</h2>
+        <hr />
+        <div class="container-multiple-inputs">
+          <div class="input-group">
+            <label>STATUS ATUAL</label>
+            <input type="text" id="statusPagamentoDisplay" readonly />
+          </div>
+          <!-- only shown when NF has no duplicatas -->
+          <div
+            class="input-group"
+            id="statusPagamentoEdit"
+            style="display: none">
+            <label for="statusPagamento">ALTERAR STATUS</label>
+            <select id="statusPagamento">
+              <option value="Aberta">Aberta</option>
+              <option value="Paga">Paga</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -126,10 +142,32 @@
             <th>Vencimento</th>
             <th>Valor</th>
             <th>Status</th>
+            <th class="no-print"></th>
           </tr>
         </thead>
         <tbody id="duplicatas-body"></tbody>
       </table>
+
+      <!-- MANUAL DUPLICATA (only shown when no duplicatas exist) -->
+      <div id="secao-adicionar-duplicata" style="display: none">
+        <h2>ADICIONAR DATA DE VENCIMENTO</h2>
+        <hr />
+        <div class="container-multiple-inputs">
+          <div class="input-group">
+            <label for="novaDupNumero">Nº DUPLICATA</label>
+            <input type="text" id="novaDupNumero" placeholder="Ex: 001" />
+          </div>
+          <div class="input-group">
+            <label for="novaDupVenc">DATA DE VENCIMENTO</label>
+            <input type="date" id="novaDupVenc" />
+          </div>
+          <div class="input-group">
+            <label for="novaDupValor">VALOR</label>
+            <input type="text" id="novaDupValor" placeholder="Ex: 1.250,00" />
+          </div>
+        </div>
+        <button type="button" id="btn-adicionar-duplicata">+ ADICIONAR</button>
+      </div>
 
       <!-- ACTIONS -->
       <div class="form-actions no-print">

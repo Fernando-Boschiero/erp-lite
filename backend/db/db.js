@@ -321,6 +321,7 @@ db.prepare(
     vDup REAL,
     status TEXT DEFAULT 'Aberta',
     data_pagamento TEXT,
+    manual INTEGER DEFAULT 0,
     FOREIGN KEY (nf_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE
   )
 `,

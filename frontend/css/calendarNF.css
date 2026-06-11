@@ -1,0 +1,184 @@
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.calendar-controls h2 {
+  min-width: 200px;
+  text-align: center;
+  margin: 0;
+  font-size: 1.2rem;
+  text-transform: capitalize;
+}
+
+.calendar-controls button {
+  background: #1a5c35;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.calendar-controls button:hover {
+  background: #2e8b57;
+}
+
+.calendar-filter {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.calendar-filter label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+/* Calendar grid */
+#calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+  padding: 8px 4px;
+  color: #1a5c35;
+  border-bottom: 2px solid #1a5c35;
+}
+
+.calendar-day {
+  min-height: 100px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 4px;
+  background: #fff;
+  vertical-align: top;
+}
+
+.calendar-day.empty {
+  background: #f8f9fa;
+  border-color: #f0f0f0;
+}
+
+.calendar-day.today {
+  border: 2px solid #1a5c35;
+  background: #e8f5ee;
+}
+
+.calendar-day-number {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.calendar-day.today .calendar-day-number {
+  color: #1a5c35;
+}
+
+/* Duplicata entries */
+.dup-entry {
+  font-size: 0.75rem;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.2s;
+}
+
+.dup-entry:hover {
+  opacity: 0.85;
+}
+
+.dup-entry.aberta {
+  background: #fff3cd;
+  color: #856404;
+  border-left: 3px solid #ffc107;
+}
+
+.dup-entry.aberta.vencida {
+  background: #f8d7da;
+  color: #842029;
+  border-left: 3px solid #dc3545;
+}
+
+.dup-entry.paga {
+  background: #d1e7dd;
+  color: #0a3622;
+  border-left: 3px solid #198754;
+}
+
+/* Tooltip */
+.dup-tooltip {
+  position: fixed;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 220px;
+  max-width: 300px;
+}
+
+.dup-tooltip button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  background: #1a5c35;
+  color: white;
+}
+
+.dup-tooltip button:hover {
+  background: #2e8b57;
+}
+
+#tooltip-reabrir {
+  background: #6c757d !important;
+}
+
+#tooltip-reabrir:hover {
+  background: #5a6268 !important;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+.tooltip-label {
+  color: #6c757d;
+  font-weight: bold;
+}
+
+.tooltip-value {
+  color: #333;
+  text-align: right;
+}
