@@ -13,6 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { default: puppeteer } = require("puppeteer");
+const multer = require("multer");
 
 // create an express app (your server)
 const app = express();
@@ -1170,13 +1171,6 @@ app.put("/pedidos/:id", (req, res) => {
     if (!current)
       return res.status(404).json({ error: "Pedido não encontrado." });
 
-    if (["Recebido", "Cancelado"].includes(current.status)) {
-      return res.status(403).json({
-        error: "Este pedido não pode ser editado no status atual.",
-      });
-    }
-
-    // replace the existing delete/reinsert block with this:
     const transaction = db.transaction(() => {
       db.prepare(
         `
@@ -1272,7 +1266,7 @@ app.put("/pedidos/:id", (req, res) => {
   }
 });
 
-// PATCH - update pedido status
+// PATCH - UPDATE PEDIDO STATUS
 app.patch("/pedidos/:id/status", (req, res) => {
   const { status_novo, alterado_por, observacao } = req.body;
 
@@ -1284,7 +1278,6 @@ app.patch("/pedidos/:id/status", (req, res) => {
     if (!current)
       return res.status(404).json({ error: "Pedido não encontrado." });
 
-    // define allowed transitions
     const transicoesPermitidas = {
       Criado: ["Recebido", "Recebido Parcialmente", "Cancelado"],
       "Recebido Parcialmente": ["Recebido", "Cancelado"],
@@ -1293,35 +1286,17 @@ app.patch("/pedidos/:id/status", (req, res) => {
     };
 
     const permitidas = transicoesPermitidas[current.status] || [];
-
     if (!permitidas.includes(status_novo)) {
-      return res.status(403).json({
+      return res.status(400).json({
         error: `Não é possível mudar o status de "${current.status}" para "${status_novo}".`,
       });
     }
 
-    const transaction = db.transaction(() => {
-      db.prepare(
-        `
-        UPDATE pedidos SET status = ?, updated_at = datetime('now') WHERE id = ?
-      `,
-      ).run(status_novo, req.params.id);
+    db.prepare(`UPDATE pedidos SET status = ? WHERE id = ?`).run(
+      status_novo,
+      req.params.id,
+    );
 
-      db.prepare(
-        `
-        INSERT INTO pedido_status_log (pedido_id, status_anterior, status_novo, alterado_por, observacao)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-      ).run(
-        req.params.id,
-        current.status,
-        status_novo,
-        alterado_por,
-        observacao,
-      );
-    });
-
-    transaction();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1837,6 +1812,103 @@ function subst() {
   }
 });
 
+// MULTER STORAGE CONFIGURATION FOR PEDIDOS
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../frontend/uploads/pedidos"));
+  },
+  filename: (req, file, cb) => {
+    const numPedido = req.params.numPedido.replace(/[^a-zA-Z0-9-_]/g, "_");
+
+    // separate name from extension
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path
+      .basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9-_.]/g, "_");
+
+    // Brazilian date format DDMMYYYY
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, "0");
+    const mes = String(now.getMonth() + 1).padStart(2, "0");
+    const ano = now.getFullYear();
+    const dataFormatada = `${dia}${mes}${ano}`;
+
+    cb(null, `${numPedido}_${nameWithoutExt}_${dataFormatada}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit per file
+});
+
+// POST - upload files to a pedido
+app.post(
+  "/pedidos/:numPedido/arquivos",
+  upload.array("arquivos", 10),
+  (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado." });
+      }
+      const arquivos = req.files.map((f) => ({
+        nome: f.originalname,
+        arquivo: f.filename,
+        tamanho: f.size,
+      }));
+      res.json({ success: true, arquivos });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
+
+// GET - list files for a pedido
+app.get("/pedidos/:numPedido/arquivos", (req, res) => {
+  try {
+    const numPedido = req.params.numPedido.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const uploadsDir = path.join(__dirname, "../frontend/uploads/pedidos");
+    const allFiles = fs.readdirSync(uploadsDir);
+    // filter files that belong to this pedido
+    const arquivos = allFiles
+      .filter((f) => f.startsWith(numPedido + "_"))
+      .map((f) => ({
+        nome: f
+          .replace(new RegExp(`^${numPedido}_`), "")
+          .replace(/_\d{8}(\.[^.]+)$/, "$1"),
+        arquivo: f,
+        url: `/uploads/pedidos/${f}`,
+      }));
+    res.json(arquivos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - delete a file from a pedido
+app.delete("/pedidos/:numPedido/arquivos/:filename", (req, res) => {
+  try {
+    const filePath = path.join(
+      __dirname,
+      "../frontend/uploads/pedidos",
+      req.params.filename,
+    );
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Arquivo não encontrado." });
+    }
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// serve uploaded files statically
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../frontend/uploads")),
+);
+
 // GET - FETCH ALL REGISTERED/ACTIVE USERS FROM DB
 app.get("/usuarios", (req, res) => {
   const rows = db.prepare(`SELECT * FROM usuarios WHERE is_active = 1`).all();
@@ -2112,7 +2184,7 @@ app.get("/controle-custos", (req, res) => {
         p.aplicacao,
         p.data_prevista,
         p.status as status_pedido,
-        p.created_at as pedido_created_at,
+        p.data_pedido,
         nf.id as nf_id,
         nf.nNF,
         nf.xNome,

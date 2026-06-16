@@ -6,8 +6,7 @@ const btnSalvarPedido = document.getElementById("btn-salvar-pedido");
 const btnClonarPedido = document.getElementById("btn-clonar-pedido");
 const statusPedido = document.getElementById("statusPedido");
 const statusSelect = document.getElementById("statusSelect");
-const alteradoPor = document.getElementById("alteradoPor");
-const observacaoStatus = document.getElementById("observacaoStatus");
+
 /* NOTAS FISCAIS VARIABLES */
 const numeroNF = document.getElementById("numeroNF");
 const btnAdicionarNF = document.getElementById("btn-adicionar-nf");
@@ -19,6 +18,11 @@ const listaNFs = document.getElementById("lista-nfs");
 /* VARIAVEIS PARA CALCULO DE DATA PREVISTA */
 const prazoEntrega = document.getElementById("prazoEntrega");
 const dataPrevista = document.getElementById("dataPrevista");
+/* ─── ARQUIVOS ─── */
+const secaoArquivos = document.getElementById("secao-arquivos");
+const fileInput = document.getElementById("fileInput");
+const btnUploadArquivos = document.getElementById("btn-upload-arquivos");
+const listaArquivos = document.getElementById("lista-arquivos");
 
 const responsavelSelect = document.getElementById("responsavelSelect");
 
@@ -146,7 +150,6 @@ function buildPayload() {
     comprador_email: document.getElementById("compradorEmail")?.value || "",
     comprador_telefone:
       document.getElementById("compradorTelefone")?.value || "",
-    alterado_por: alteradoPor?.value || "",
     itens: getItensFromTable(),
   };
 }
@@ -206,6 +209,9 @@ if (btnSalvarPedido) {
         currentPedidoId = data.id;
         alert("Pedido salvo com sucesso!");
         atualizarOpcoesStatus("Criado");
+
+        if (secaoArquivos) secaoArquivos.style.display = "block";
+        await carregarArquivos();
       }
     }
   });
@@ -220,12 +226,6 @@ if (statusSelect) {
       return;
     }
 
-    if (!alteradoPor?.value) {
-      alert("Por favor, informe quem está alterando o status.");
-      statusSelect.value = statusPedido.value;
-      return;
-    }
-
     const statusNovo = statusSelect.value;
 
     const result = await fetch(
@@ -235,8 +235,6 @@ if (statusSelect) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status_novo: statusNovo,
-          alterado_por: alteradoPor.value,
-          observacao: observacaoStatus?.value || "",
         }),
       },
     );
@@ -377,6 +375,105 @@ async function carregarPedido(id) {
   statusPedido.value = pedido.status || "Criado";
   atualizarOpcoesStatus(pedido.status || "Criado");
   await carregarNFsPedido();
+
+  if (secaoArquivos) secaoArquivos.style.display = "block";
+  await carregarArquivos();
+}
+
+async function carregarArquivos() {
+  if (!currentPedidoId) return;
+
+  // get pedido num_pedido first
+  const pedidoRes = await fetch(
+    `http://localhost:3000/pedidos/${currentPedidoId}`,
+  );
+  const pedido = await pedidoRes.json();
+  const numPedido = pedido.num_pedido;
+
+  if (!numPedido) return;
+
+  const res = await fetch(
+    `http://localhost:3000/pedidos/${encodeURIComponent(numPedido)}/arquivos`,
+  );
+  const arquivos = await res.json();
+
+  listaArquivos.innerHTML = "";
+
+  if (arquivos.length === 0) {
+    listaArquivos.innerHTML = `<p>Nenhum arquivo anexado.</p>`;
+    return;
+  }
+
+  arquivos.forEach((arq) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px;";
+    div.innerHTML = `
+      <span style="flex:1;">📄 ${arq.nome}</span>
+      <a href="${arq.url}" target="_blank" 
+        style="color:#0d6efd; text-decoration:none;">⬇️ Download</a>
+      <button type="button" class="btn-deletar-arquivo" 
+        data-filename="${arq.arquivo}"
+        data-numpedido="${numPedido}"
+        style="background:none; border:none; cursor:pointer;">🗑️</button>
+    `;
+    listaArquivos.appendChild(div);
+  });
+
+  // delete handlers
+  listaArquivos.querySelectorAll(".btn-deletar-arquivo").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Tem certeza que deseja excluir este arquivo?")) return;
+      const result = await fetch(
+        `http://localhost:3000/pedidos/${encodeURIComponent(btn.dataset.numpedido)}/arquivos/${btn.dataset.filename}`,
+        { method: "DELETE" },
+      );
+      const data = await result.json();
+      if (!result.ok) {
+        alert(data.error);
+      } else {
+        await carregarArquivos();
+      }
+    });
+  });
+}
+
+if (btnUploadArquivos) {
+  btnUploadArquivos.addEventListener("click", async () => {
+    if (!currentPedidoId) {
+      alert("Salve o pedido antes de anexar arquivos.");
+      return;
+    }
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert("Por favor, selecione ao menos um arquivo.");
+      return;
+    }
+
+    // get pedido num_pedido
+    const pedidoRes = await fetch(
+      `http://localhost:3000/pedidos/${currentPedidoId}`,
+    );
+    const pedido = await pedidoRes.json();
+    const numPedido = pedido.num_pedido;
+
+    const formData = new FormData();
+    for (const file of fileInput.files) {
+      formData.append("arquivos", file);
+    }
+
+    const result = await fetch(
+      `http://localhost:3000/pedidos/${encodeURIComponent(numPedido)}/arquivos`,
+      { method: "POST", body: formData },
+    );
+
+    const data = await result.json();
+    if (!result.ok) {
+      alert(data.error);
+    } else {
+      fileInput.value = "";
+      await carregarArquivos();
+    }
+  });
 }
 
 // Ações ao clicar em Gerar PDF

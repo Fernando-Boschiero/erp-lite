@@ -52,9 +52,7 @@ function renderTabela() {
 
   const filtered = allRows.filter((row) => {
     if (inicio || fim) {
-      const dataStr = row.pedido_created_at
-        ? row.pedido_created_at.substring(0, 10)
-        : null;
+      const dataStr = row.data_pedido ? row.data_pedido.substring(0, 10) : null;
 
       if (dataStr) {
         const dataRef = new Date(dataStr + "T00:00:00");
