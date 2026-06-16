@@ -393,3 +393,16 @@ button:hover {
   color: #dc3545;
   font-weight: bold;
 }
+
+/* CSS FOR CADASTRO DE NOTA FISCAL */
+
+.xml-upload {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.8rem;
+}
+
+.xml-upload input {
+  font-size: 1rem;
+  margin-left: 5px;
+}

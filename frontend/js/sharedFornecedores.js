@@ -20,6 +20,11 @@ function formatCNPJ(cnpj) {
 async function carregarFornecedores() {
   const res = await fetch("http://localhost:3000/fornecedores");
   fornecedores = await res.json();
+
+  // sort alphabetically
+  fornecedores.sort((a, b) =>
+    a.razao_social.localeCompare(b.razao_social, "pt-BR"),
+  );
   return fornecedores;
 }
 
