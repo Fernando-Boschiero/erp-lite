@@ -36,6 +36,9 @@ function clearForm() {
   document.getElementById("estado").value = "";
   document.getElementById("cep").value = "";
   document.getElementById("telefone").value = "";
+  document.getElementById("contato").value = "";
+  document.getElementById("telefoneRep").value = "";
+  document.getElementById("emailFornecedor").value = "";
 }
 
 carregarFornecedores().then(() => {
@@ -64,6 +67,11 @@ if (selectFornecedor) {
     document.getElementById("estado").value = findFornecedor.estado;
     document.getElementById("cep").value = findFornecedor.cep;
     document.getElementById("telefone").value = findFornecedor.telefone;
+    document.getElementById("contato").value = findFornecedor.contato ?? "";
+    document.getElementById("telefoneRep").value =
+      findFornecedor.telefone_rep ?? "";
+    document.getElementById("emailFornecedor").value =
+      findFornecedor.email ?? "";
   });
 }
 
@@ -83,6 +91,9 @@ if (btnSubmit) {
       estado: document.getElementById("estado").value,
       cep: document.getElementById("cep").value,
       telefone: document.getElementById("telefone").value,
+      contato: document.getElementById("contato").value,
+      telefone_rep: document.getElementById("telefoneRep").value,
+      email: document.getElementById("emailFornecedor").value,
     };
 
     if (currentMode === "register") {

@@ -23,12 +23,16 @@ function renderizarTabela(lista) {
     tr.innerHTML = `
       <td>${f.razao_social}</td>
       <td>${formatCNPJ(f.cnpj)}</td>
+            <td>${f.ie ?? "-"}</td>
       <td>${f.rua}</td>
       <td>${f.bairro}</td>
       <td>${f.cidade}</td>
       <td>${f.estado}</td>
       <td>${f.cep}</td>
       <td>${f.telefone}</td>
+      <td>${f.contato}</td>
+      <td>${f.telefone_rep}</td>
+      <td>${f.email}</td>
       <td>
         <select class="toggle-ativo" data-id="${f.id}">
           <option value="1" ${f.is_active == 1 ? "selected" : ""}>Ativo</option>

@@ -36,23 +36,52 @@ function formatarData(dataStr) {
   return `${dia}/${mes}/${ano}`;
 }
 
-// GET - fetch all active suppliers
+// SUPPLIERS GET - fetch all active suppliers
 app.get("/fornecedores", (req, res) => {
   const rows = db
-    .prepare("SELECT * FROM fornecedores WHERE is_active = 1")
+    .prepare(
+      "SELECT * FROM fornecedores WHERE is_active = 1 ORDER BY razao_social ASC",
+    )
     .all();
   res.json(rows);
 });
 
-// POST - register new supplier
+// SUPPLIERS POST - register new supplier
 app.post("/fornecedores", (req, res) => {
-  const { razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone } =
-    req.body;
+  const {
+    razao_social,
+    cnpj,
+    ie,
+    rua,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    telefone,
+    contato,
+    telefone_rep,
+    email,
+  } = req.body;
   try {
     db.prepare(
-      `INSERT INTO fornecedores (razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone);
+      `
+  INSERT INTO fornecedores (razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone, contato, telefone_rep, email)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`,
+    ).run(
+      razao_social,
+      cnpj,
+      ie,
+      rua,
+      bairro,
+      cidade,
+      estado,
+      cep,
+      telefone,
+      contato,
+      telefone_rep,
+      email,
+    );
     res.json({ success: true });
   } catch (err) {
     if (err.message.includes("UNIQUE constraint failed: fornecedores.cnpj")) {
@@ -63,13 +92,30 @@ app.post("/fornecedores", (req, res) => {
   }
 });
 
-// PUT - update existing supplier
+// SUPPLIERS PUT - update existing supplier
 app.put("/fornecedores/:id", (req, res) => {
-  const { razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone } =
-    req.body;
+  const {
+    razao_social,
+    cnpj,
+    ie,
+    rua,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    telefone,
+    contato,
+    telefone_rep,
+    email,
+  } = req.body;
+
   db.prepare(
-    `UPDATE fornecedores SET razao_social=?, cnpj=?, ie=?, rua=?, bairro=?, cidade=?, estado=?, cep=?, telefone=?
-     WHERE id=?`,
+    `
+  UPDATE fornecedores SET 
+    razao_social=?, cnpj=?, ie=?, rua=?, bairro=?, cidade=?, estado=?, cep=?, 
+    telefone=?, contato=?, telefone_rep=?, email=?
+  WHERE id=?
+`,
   ).run(
     razao_social,
     cnpj,
@@ -80,6 +126,9 @@ app.put("/fornecedores/:id", (req, res) => {
     estado,
     cep,
     telefone,
+    contato,
+    telefone_rep,
+    email,
     req.params.id,
   );
   res.json({ success: true });
