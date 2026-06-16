@@ -260,23 +260,33 @@
                 <option value="Criado">Criado</option>
               </select>
             </div>
-            <div class="input-group">
-              <label for="alteradoPor">ALTERADO POR</label>
-              <input
-                type="text"
-                id="alteradoPor"
-                name="alterado_por"
-                placeholder="Seu nome" />
-            </div>
-            <div class="input-group">
-              <label for="observacaoStatus">OBSERVAÇÃO</label>
-              <input
-                type="text"
-                id="observacaoStatus"
-                name="observacao_status"
-                placeholder="Motivo da alteração (opcional)" />
-            </div>
           </div>
+        </div>
+
+        <!-- ARQUIVOS -->
+        <div class="section no-print" id="secao-arquivos" style="display: none">
+          <h2>ARQUIVOS</h2>
+          <hr />
+          <div class="input-group">
+            <label for="fileInput">SELECIONAR ARQUIVOS</label>
+            <input
+              type="file"
+              id="fileInput"
+              multiple
+              style="
+                font-size: 1rem;
+                padding: 8px 12px;
+                width: 400px;
+                cursor: pointer;
+              " />
+            <button
+              type="button"
+              id="btn-upload-arquivos"
+              style="margin-top: 8px">
+              FAZER UPLOAD
+            </button>
+          </div>
+          <div id="lista-arquivos" style="margin-top: 16px"></div>
         </div>
 
         <!-- FORM ACTIONS -->

@@ -16,4 +16,4 @@ AI prompts.txt
 *.docx
 
 #Sensitive Files
-backend/uploads/
+frontend/uploads/
