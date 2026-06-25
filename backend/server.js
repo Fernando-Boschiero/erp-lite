@@ -1934,13 +1934,10 @@ app.get("/notas-fiscais", (req, res) => {
     nf.created_at,
     p.num_pedido,
     p.aplicacao,
-    COALESCE(SUM(i.vProd), 0) as valor_nf,
-    MIN(d.dVenc) as proxima_duplicata
+    COALESCE((SELECT SUM(i.vProd) FROM nf_itens_fiscal i WHERE i.nf_id = nf.id), 0) as valor_nf,
+    (SELECT MIN(d.dVenc) FROM nf_duplicatas d WHERE d.nf_id = nf.id) as proxima_duplicata
   FROM notas_fiscais nf
   LEFT JOIN pedidos p ON nf.pedido_id = p.id
-  LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
-  LEFT JOIN nf_duplicatas d ON d.nf_id = nf.id
-  GROUP BY nf.id
   ORDER BY nf.created_at DESC
 `,
       )
