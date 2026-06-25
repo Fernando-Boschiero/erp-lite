@@ -1224,10 +1224,10 @@ app.put("/pedidos/:id", (req, res) => {
           // existing item — update in place
           db.prepare(
             `
-        UPDATE pedido_itens SET
-          item=?, quantidade=?, descricao=?, unidade=?, val_unitario=?, ipi=?, total=?
-        WHERE id=?
-      `,
+    UPDATE pedido_itens SET
+      item=?, quantidade=?, descricao=?, unidade=?, val_unitario=?, ipi=?, total=?, recebido=?
+    WHERE id=?
+  `,
           ).run(
             item.item,
             item.quantidade,
@@ -1236,15 +1236,16 @@ app.put("/pedidos/:id", (req, res) => {
             item.val_unitario,
             item.ipi,
             item.total,
+            item.recebido ? 1 : 0,
             item.id,
           );
         } else {
           // new item — insert
           db.prepare(
             `
-        INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+    INSERT INTO pedido_itens (pedido_id, item, quantidade, descricao, unidade, val_unitario, ipi, total, recebido)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `,
           ).run(
             req.params.id,
             item.item,
