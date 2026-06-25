@@ -129,6 +129,7 @@ function getItensFromTable() {
           .replace(/\./g, "")
           .replace(",", "."),
       ) || 0,
+    recebido: row.querySelector(".item-recebido")?.checked ? 1 : 0,
   }));
 }
 
@@ -356,6 +357,7 @@ async function carregarPedido(id) {
   (pedido.itens || []).forEach((item, index) => {
     const tr = document.createElement("tr");
     tr.dataset.itemId = item.id;
+    if (item.recebido) tr.style.backgroundColor = "#cce6da";
     tr.innerHTML = `
       <td><input type="checkbox" class="row-select"></td>
       <td>${index + 1}</td>
@@ -365,6 +367,7 @@ async function carregarPedido(id) {
       <td contenteditable="true" class="val-unitario">${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
       <td contenteditable="true" class="ipi">${item.ipi != null ? String(item.ipi).replace(".", ",") : ""}</td>
       <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+      <td><input type="checkbox" class="item-recebido" ${item.recebido ? "checked" : ""}></td>
     `;
     tableBody.appendChild(tr);
   });

@@ -67,6 +67,7 @@ db.prepare(
     val_unitario REAL,
     ipi REAL,
     total REAL,
+    recebido INTEGER DEFAULT 0,
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE
   )
 `,

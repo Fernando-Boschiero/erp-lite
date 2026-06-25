@@ -120,6 +120,17 @@ if (tableBody) {
   });
 }
 
+if (tableBody) {
+  tableBody.addEventListener("change", (e) => {
+    if (e.target.classList.contains("item-recebido")) {
+      const row = e.target.closest("tr");
+      if (row) {
+        row.style.backgroundColor = e.target.checked ? "#d1e7dd" : "";
+      }
+    }
+  });
+}
+
 if (addRowBtn) {
   addRowBtn.addEventListener("click", () => {
     const rowCount = tableBody.rows.length + 1;
@@ -133,6 +144,7 @@ if (addRowBtn) {
       <td contenteditable="true" class="val-unitario"></td>
       <td contenteditable="true" class="ipi"></td>
       <td></td>
+      <td><input type="checkbox" class="item-recebido"></td>
     `;
     tableBody.appendChild(newRow);
   });
