@@ -331,4 +331,18 @@ db.prepare(
 `,
 ).run();
 
+// NF_PEDIDOS - junction table linking notas fiscais to multiple pedidos de compra (many-to-many)
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS nf_pedidos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nf_id INTEGER NOT NULL,
+    pedido_id INTEGER NOT NULL,
+    FOREIGN KEY (nf_id) REFERENCES notas_fiscais(id) ON DELETE CASCADE,
+    FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+    UNIQUE(nf_id, pedido_id)
+  )
+`,
+).run();
+
 module.exports = db;

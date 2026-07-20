@@ -13,7 +13,14 @@ const btnCancelarNF = document.getElementById("btn-cancelar-nf");
 const tipoNF = document.getElementById("tipoNF");
 const vinculoPedido = document.getElementById("vinculo-pedido");
 const vinculoCotacao = document.getElementById("vinculo-cotacao");
-const tiposComPedido = ["Frete", "Matéria Prima", "Serviço - Compra"];
+const tiposComPedido = [
+  "Consumível",
+  "Despachante",
+  "Embalagem",
+  "Frete",
+  "Matéria Prima",
+  "Serviço - Compra",
+];
 const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
 /* ─── LOAD PEDIDOS INTO DROPDOWN ─── */
@@ -297,16 +304,59 @@ if (tipoNF) {
 }
 
 /* ─── PEDIDO SELECTION — autofill fornecedor and aplicacao ─── */
-if (pedidoSelect) {
-  pedidoSelect.addEventListener("change", () => {
+let pedidosSelecionados = []; // array of selected pedidos
+
+const btnAdicionarPedido = document.getElementById("btn-adicionar-pedido");
+const pedidosVinculadosDiv = document.getElementById("pedidos-vinculados");
+
+function renderPedidosSelecionados() {
+  if (!pedidosVinculadosDiv) return;
+  pedidosVinculadosDiv.innerHTML = "";
+
+  if (pedidosSelecionados.length === 0) {
+    pedidosVinculadosDiv.innerHTML = `<p style="color:#6c757d;">Nenhum pedido vinculado.</p>`;
+    return;
+  }
+
+  pedidosSelecionados.forEach((p) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px; background:#f8f9fa;";
+    div.innerHTML = `
+      <span style="flex:1;"><strong>${p.num_pedido}</strong> — ${p.razao_social ?? ""} ${p.aplicacao ? `(${p.aplicacao})` : ""}</span>
+      <button type="button" class="btn-remover-pedido" data-id="${p.id}"
+        style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+    `;
+    pedidosVinculadosDiv.appendChild(div);
+  });
+
+  // remove handlers
+  pedidosVinculadosDiv
+    .querySelectorAll(".btn-remover-pedido")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        pedidosSelecionados = pedidosSelecionados.filter(
+          (p) => p.id != btn.dataset.id,
+        );
+        renderPedidosSelecionados();
+      });
+    });
+}
+
+if (btnAdicionarPedido) {
+  btnAdicionarPedido.addEventListener("click", () => {
     const pedido = pedidos.find((p) => p.id == pedidoSelect.value);
-    if (!pedido) {
-      document.getElementById("fornecedorNF").value = "";
-      document.getElementById("aplicacaoNF").value = "";
+    if (!pedido) return;
+
+    // check if already added
+    if (pedidosSelecionados.find((p) => p.id == pedido.id)) {
+      alert("Este pedido já foi adicionado.");
       return;
     }
-    document.getElementById("fornecedorNF").value = pedido.razao_social || "";
-    document.getElementById("aplicacaoNF").value = pedido.aplicacao || "";
+
+    pedidosSelecionados.push(pedido);
+    pedidoSelect.value = "";
+    renderPedidosSelecionados();
   });
 }
 
@@ -321,8 +371,11 @@ if (btnSalvarNF) {
       alert("Por favor, selecione o tipo da nota fiscal.");
       return;
     }
-    if (tiposComPedido.includes(tipoNF.value) && !pedidoSelect.value) {
-      alert("Por favor, selecione o pedido de compra relacionado.");
+    if (
+      tiposComPedido.includes(tipoNF.value) &&
+      pedidosSelecionados.length === 0
+    ) {
+      alert("Por favor, adicione pelo menos um pedido de compra.");
       return;
     }
 
@@ -343,13 +396,13 @@ if (btnSalvarNF) {
     }
 
     const payload = {
-      pedido_id: tiposComPedido.includes(tipoNF.value)
-        ? parseInt(pedidoSelect.value) || null
-        : null,
+      pedido_ids: tiposComPedido.includes(tipoNF.value)
+        ? pedidosSelecionados.map((p) => p.id)
+        : [],
       fornecedor_id: tiposComPedido.includes(tipoNF.value)
-        ? pedido?.fornecedor_id || null
+        ? pedidosSelecionados[0]?.fornecedor_id || null
         : null,
-      cotacao_id: null, // futuro
+      cotacao_id: null,
       nNF: dadosXML.nNF,
       dhEmi: dadosXML.dhEmi,
       xNome: dadosXML.xNome,
@@ -376,8 +429,8 @@ if (btnSalvarNF) {
       vinculoPedido.style.display = "none";
       vinculoCotacao.style.display = "none";
       pedidoSelect.value = "";
-      document.getElementById("fornecedorNF").value = "";
-      document.getElementById("aplicacaoNF").value = "";
+      pedidosSelecionados = [];
+      renderPedidosSelecionados();
       document.getElementById("itens-nf-body").innerHTML = "";
       document.getElementById("duplicatas-body").innerHTML = "";
       document.getElementById("total-nf").textContent = "R$ -";
@@ -402,6 +455,8 @@ if (btnCancelarNF) {
     document.getElementById("total-nf").textContent = "R$ -";
     stepReview.style.display = "none";
   });
+  pedidosSelecionados = [];
+  renderPedidosSelecionados();
 }
 
 /* ─── INIT ─── */

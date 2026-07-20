@@ -115,7 +115,10 @@ async function renderizarTabela(lista) {
     );
 
     const dataFormatada = formatarData(p.data_pedido);
-    const dataPrevistaStyle = getDataPrevistaStyle(p.data_prevista, p.status);
+    const dataPrevistaStyle = getDataPrevistaStyle(p.data_prevista, p.status, [
+      "Recebido",
+      "Cancelado",
+    ]);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `

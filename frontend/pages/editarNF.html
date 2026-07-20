@@ -42,6 +42,9 @@
           <select id="tipoNF">
             <option value="">Selecione o tipo...</option>
             <optgroup label="Geral">
+              <option value="Aluguel de Equipamento">
+                Aluguel de Equipamento
+              </option>
               <option value="Ativo">Ativo</option>
               <option value="Carta de Correção">Carta de Correção</option>
               <option value="Complementar">Complementar</option>
@@ -51,14 +54,22 @@
               <option value="Demonstração">Demonstração</option>
               <option value="Devolução">Devolução</option>
               <option value="Entrada">Entrada</option>
+              <option value="Frete Geral">Frete Geral</option>
               <option value="Garantia">Garantia</option>
               <option value="Industrialização">Industrialização</option>
               <option value="Manutenção">Manutenção</option>
               <option value="Material de Escritório">
                 Material de Escritório
               </option>
+              <option value="Medicina do Trabalho">Medicina do Trabalho</option>
+              <option value="Serviço">Serviço</option>
+              <option value="TI">TI</option>
+              <option value="Veículos">Veículos</option>
             </optgroup>
             <optgroup label="Vinculado a Pedido de Compra">
+              <option value="Consumível">Consumível</option>
+              <option value="Despachante">Despachante</option>
+              <option value="Embalagem">Embalagem</option>
               <option value="Frete">Frete</option>
               <option value="Matéria Prima">Matéria Prima</option>
               <option value="Serviço - Compra">Serviço - Compra</option>
@@ -94,26 +105,32 @@
         </div>
       </div>
 
-      <!-- PEDIDO LINK (conditional) -->
       <div id="vinculo-pedido" style="display: none">
         <h2>VÍNCULO AO PEDIDO DE COMPRA</h2>
         <hr />
         <div class="container-multiple-inputs">
           <div class="input-group">
-            <label for="pedidoSelect">PEDIDO DE COMPRA</label>
+            <label for="pedidoSelect">ADICIONAR PEDIDO</label>
             <select id="pedidoSelect">
               <option value="">Selecione o pedido...</option>
             </select>
-          </div>
-          <div class="input-group">
-            <label for="fornecedorNF">FORNECEDOR</label>
-            <input type="text" id="fornecedorNF" readonly />
-          </div>
-          <div class="input-group">
-            <label for="aplicacaoNF">APLICAÇÃO</label>
-            <input type="text" id="aplicacaoNF" readonly />
+            <button
+              type="button"
+              id="btn-adicionar-pedido"
+              style="
+                margin-top: 8px;
+                background: #1a5c35;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 14px;
+                cursor: pointer;
+              ">
+              + ADICIONAR
+            </button>
           </div>
         </div>
+        <div id="pedidos-vinculados" style="margin-top: 12px"></div>
       </div>
 
       <!-- READ-ONLY ITEMS -->
@@ -147,6 +164,22 @@
         </thead>
         <tbody id="duplicatas-body"></tbody>
       </table>
+
+      <div class="no-print" style="margin-top: 8px">
+        <button
+          type="button"
+          id="btn-salvar-duplicatas"
+          style="
+            background: #1a5c35;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            cursor: pointer;
+          ">
+          SALVAR DUPLICATAS
+        </button>
+      </div>
 
       <!-- MANUAL DUPLICATA (only shown when no duplicatas exist) -->
       <div id="secao-adicionar-duplicata" style="display: none">
