@@ -1,7 +1,14 @@
 /* ─── STATE ─── */
 let nfData = null;
 let pedidos = [];
-const tiposComPedido = ["Frete", "Matéria Prima", "Serviço - Compra"];
+const tiposComPedido = [
+  "Consumível",
+  "Despachante",
+  "Embalagem",
+  "Frete",
+  "Matéria Prima",
+  "Serviço - Compra",
+];
 const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
 /* ─── GET ID FROM URL ─── */
@@ -32,6 +39,15 @@ async function carregarPedidos() {
 async function carregarNF() {
   const res = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`);
   nfData = await res.json();
+  console.log("nfData:", JSON.stringify(nfData));
+
+  pedidosSelecionados = (nfData.pedidosVinculados || []).map((p) => ({
+    id: p.id,
+    num_pedido: p.num_pedido,
+    aplicacao: p.aplicacao,
+    razao_social: p.razao_social,
+  }));
+  renderPedidosSelecionados();
 
   // fill read-only fields
   document.getElementById("nNF").value = nfData.nNF ?? "";
@@ -47,12 +63,30 @@ async function carregarNF() {
   // show/hide pedido section
   atualizarVinculo(nfData.tipo);
 
-  // set pedido if linked
-  if (nfData.pedido_id) {
-    pedidoSelect.value = nfData.pedido_id;
-    document.getElementById("fornecedorNF").value = nfData.razao_social ?? "";
-    document.getElementById("aplicacaoNF").value = nfData.aplicacao ?? "";
+  // populate pedidosSelecionados from junction table
+  // fall back to pedido_id if junction table has no entries
+  if (nfData.pedidosVinculados && nfData.pedidosVinculados.length > 0) {
+    pedidosSelecionados = nfData.pedidosVinculados.map((p) => ({
+      id: p.id,
+      num_pedido: p.num_pedido,
+      aplicacao: p.aplicacao,
+      razao_social: p.razao_social,
+    }));
+  } else if (nfData.pedido_id) {
+    // fallback for NFs saved before junction table existed
+    const pedido = pedidos.find((p) => p.id == nfData.pedido_id);
+    if (pedido) {
+      pedidosSelecionados = [
+        {
+          id: pedido.id,
+          num_pedido: pedido.num_pedido,
+          aplicacao: pedido.aplicacao,
+          razao_social: pedido.razao_social,
+        },
+      ];
+    }
   }
+  renderPedidosSelecionados();
 
   // fill items table
   const itensBody = document.getElementById("itens-nf-body");
@@ -88,21 +122,15 @@ async function carregarNF() {
   dupBody.innerHTML = "";
   (nfData.duplicatas || []).forEach((dup) => {
     const tr = document.createElement("tr");
+    tr.dataset.dupId = dup.id;
     tr.innerHTML = `
-    <td>${dup.nDup ?? "-"}</td>
-    <td>${
-      dup.dVenc
-        ? new Date(dup.dVenc + "T00:00:00").toLocaleDateString("pt-BR")
-        : "-"
-    }</td>
-    <td>${
-      dup.vDup
-        ? dup.vDup.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          })
-        : "-"
-    }</td>
+    <td><input type="text" class="dup-nDup" value="${dup.nDup ?? ""}" 
+      style="width: 80px; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px;" /></td>
+    <td><input type="date" class="dup-dVenc" value="${dup.dVenc ?? ""}"
+      style="border: 1px solid #dee2e6; border-radius: 4px; padding: 4px;" /></td>
+    <td><input type="text" class="dup-vDup" 
+      value="${dup.vDup ? dup.vDup.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : ""}"
+      style="width: 100px; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px;" /></td>
     <td style="color: ${dup.status === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
       ${dup.status ?? "-"}
     </td>
@@ -119,6 +147,53 @@ async function carregarNF() {
   `;
     dupBody.appendChild(tr);
   });
+
+  const btnSalvarDuplicatas = document.getElementById("btn-salvar-duplicatas");
+
+  if (btnSalvarDuplicatas) {
+    btnSalvarDuplicatas.addEventListener("click", async () => {
+      const rows = document.querySelectorAll("#duplicatas-body tr");
+      let hasError = false;
+
+      for (const row of rows) {
+        const dupId = row.dataset.dupId;
+        const nDup = row.querySelector(".dup-nDup")?.value;
+        const dVenc = row.querySelector(".dup-dVenc")?.value;
+        const vDupRaw = row.querySelector(".dup-vDup")?.value;
+        const vDup =
+          parseFloat(vDupRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
+
+        if (!dVenc) {
+          alert(
+            "Por favor, informe a data de vencimento de todas as duplicatas.",
+          );
+          hasError = true;
+          break;
+        }
+
+        const result = await fetch(
+          `http://localhost:3000/duplicatas/${dupId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nDup, dVenc, vDup }),
+          },
+        );
+
+        const data = await result.json();
+        if (!result.ok) {
+          alert(data.error);
+          hasError = true;
+          break;
+        }
+      }
+
+      if (!hasError) {
+        alert("Duplicatas atualizadas com sucesso!");
+        await carregarNF();
+      }
+    });
+  }
 
   // delete handlers
   dupBody.querySelectorAll(".btn-deletar-duplicata").forEach((btn) => {
@@ -210,9 +285,8 @@ function atualizarVinculo(tipo) {
     vinculoPedido.style.display = "block";
   } else {
     vinculoPedido.style.display = "none";
-    pedidoSelect.value = "";
-    document.getElementById("fornecedorNF").value = "";
-    document.getElementById("aplicacaoNF").value = "";
+    pedidosSelecionados = [];
+    renderPedidosSelecionados();
   }
 }
 
@@ -223,16 +297,55 @@ if (tipoNF) {
   });
 }
 
-if (pedidoSelect) {
-  pedidoSelect.addEventListener("change", () => {
+let pedidosSelecionados = [];
+
+const btnAdicionarPedido = document.getElementById("btn-adicionar-pedido");
+const pedidosVinculadosDiv = document.getElementById("pedidos-vinculados");
+
+function renderPedidosSelecionados() {
+  if (!pedidosVinculadosDiv) return;
+  pedidosVinculadosDiv.innerHTML = "";
+
+  if (pedidosSelecionados.length === 0) {
+    pedidosVinculadosDiv.innerHTML = `<p style="color:#6c757d;">Nenhum pedido vinculado.</p>`;
+    return;
+  }
+
+  pedidosSelecionados.forEach((p) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px; background:#f8f9fa;";
+    div.innerHTML = `
+      <span style="flex:1;"><strong>${p.num_pedido}</strong> — ${p.razao_social ?? ""} ${p.aplicacao ? `(${p.aplicacao})` : ""}</span>
+      <button type="button" class="btn-remover-pedido" data-id="${p.id}"
+        style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+    `;
+    pedidosVinculadosDiv.appendChild(div);
+  });
+
+  pedidosVinculadosDiv
+    .querySelectorAll(".btn-remover-pedido")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        pedidosSelecionados = pedidosSelecionados.filter(
+          (p) => p.id != btn.dataset.id,
+        );
+        renderPedidosSelecionados();
+      });
+    });
+}
+
+if (btnAdicionarPedido) {
+  btnAdicionarPedido.addEventListener("click", () => {
     const pedido = pedidos.find((p) => p.id == pedidoSelect.value);
-    if (!pedido) {
-      document.getElementById("fornecedorNF").value = "";
-      document.getElementById("aplicacaoNF").value = "";
+    if (!pedido) return;
+    if (pedidosSelecionados.find((p) => p.id == pedido.id)) {
+      alert("Este pedido já foi adicionado.");
       return;
     }
-    document.getElementById("fornecedorNF").value = pedido.razao_social ?? "";
-    document.getElementById("aplicacaoNF").value = pedido.aplicacao ?? "";
+    pedidosSelecionados.push(pedido);
+    pedidoSelect.value = "";
+    renderPedidosSelecionados();
   });
 }
 
@@ -242,16 +355,19 @@ if (btnSalvar) {
       alert("Por favor, selecione o tipo da nota fiscal.");
       return;
     }
-    if (tiposComPedido.includes(tipoNF.value) && !pedidoSelect.value) {
-      alert("Por favor, selecione o pedido de compra relacionado.");
+    if (
+      tiposComPedido.includes(tipoNF.value) &&
+      pedidosSelecionados.length === 0
+    ) {
+      alert("Por favor, adicione pelo menos um pedido de compra.");
       return;
     }
 
     const payload = {
       tipo: tipoNF.value,
-      pedido_id: tiposComPedido.includes(tipoNF.value)
-        ? parseInt(pedidoSelect.value) || null
-        : null,
+      pedido_ids: tiposComPedido.includes(tipoNF.value)
+        ? pedidosSelecionados.map((p) => p.id)
+        : [],
       status_pagamento:
         nfData.duplicatas && nfData.duplicatas.length === 0
           ? statusPagamento.value

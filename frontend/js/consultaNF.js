@@ -80,10 +80,13 @@ function renderTabela() {
 
   tabelaBody.innerHTML = "";
   let totalValor = 0;
+  const nfsUnicas = new Set();
 
   filtered.forEach((row) => {
-    totalValor += row.valor_nf || 0;
-
+    if (row.nf_id && !nfsUnicas.has(row.nf_id)) {
+      nfsUnicas.add(row.nf_id);
+      totalValor += row.valor_nf || 0;
+    }
     // calculate data prevista style inside forEach where row is defined
     const dataPrevistaStyle = getDataPrevistaStyle(
       row.data_prevista,
@@ -102,15 +105,15 @@ function renderTabela() {
       </td>
       <td>${row.xNome ?? "-"}</td>
       <td style="color: ${dataPrevistaStyle.cor};">${dataPrevistaStyle.texto}</td>
-<td>${
-      row.nNF
-        ? `<a href="../pages/editarNF.html?id=${row.nf_id}" 
+      <td>${
+        row.nNF
+          ? `<a href="../pages/editarNF.html?id=${row.nf_id}" 
         target="_blank"
         style="color: #0d6efd; text-decoration: none; font-weight: bold;">
        ${row.nNF}
      </a>`
-        : "-"
-    }</td>
+          : "-"
+      }</td>
       <td>${
         row.valor_nf
           ? row.valor_nf.toLocaleString("pt-BR", {
@@ -139,6 +142,7 @@ function renderTabela() {
   document.getElementById("total-valor").textContent =
     totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
 /* ─── EVENT LISTENERS ─── */
 if (searchInput) searchInput.addEventListener("input", renderTabela);
 if (dataInicio) dataInicio.addEventListener("change", renderTabela);

@@ -176,7 +176,7 @@ app.get("/cotacoes", (req, res) => {
     ON c1.num_cotacao = c2.num_cotacao
     AND c1.revisao = c2.max_revisao
     WHERE c1.is_active = 1
-    ORDER BY c1.created_at DESC
+    ORDER BY CAST(c1.num_cotacao AS INTEGER) DESC, c1.num_cotacao DESC
   `,
     )
     .all();
@@ -1024,7 +1024,7 @@ app.get("/pedidos", (req, res) => {
     SELECT pedidos.*, fornecedores.razao_social
     FROM pedidos
     JOIN fornecedores ON pedidos.fornecedor_id = fornecedores.id
-    ORDER BY pedidos.created_at DESC
+    ORDER BY CAST(pedidos.num_pedido AS INTEGER) DESC, pedidos.num_pedido DESC
   `,
     )
     .all();
@@ -1996,7 +1996,7 @@ app.get("/notas-fiscais/:id", (req, res) => {
 // POST - create a new nota fiscal with items and duplicatas
 app.post("/notas-fiscais", (req, res) => {
   const {
-    pedido_id,
+    pedido_ids,
     fornecedor_id,
     cotacao_id,
     nNF,
@@ -2016,11 +2016,11 @@ app.post("/notas-fiscais", (req, res) => {
         .prepare(
           `
         INSERT INTO notas_fiscais (pedido_id, fornecedor_id, cotacao_id, nNF, dhEmi, xNome, tipo)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`,
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
         )
         .run(
-          pedido_id || null,
+          pedido_ids?.[0] || null, // keep first pedido_id for backward compatibility
           fornecedor_id || null,
           cotacao_id || null,
           nNF,
@@ -2030,6 +2030,15 @@ app.post("/notas-fiscais", (req, res) => {
         );
 
       const nfId = result.lastInsertRowid;
+
+      // insert into junction table for each pedido
+      for (const pedido_id of pedido_ids || []) {
+        db.prepare(
+          `
+          INSERT OR IGNORE INTO nf_pedidos (nf_id, pedido_id) VALUES (?, ?)
+        `,
+        ).run(nfId, pedido_id);
+      }
 
       // insert items
       for (const item of itens || []) {
@@ -2138,33 +2147,18 @@ app.get("/pedidos/:id/notas-fiscais", (req, res) => {
     const nfs = db
       .prepare(
         `
-      SELECT 
+      SELECT
         nf.id, nf.nNF, nf.xNome, nf.tipo, nf.status_pagamento,
-        SUM(i.vProd) as valor_total
+        COALESCE((SELECT SUM(i.vProd) FROM nf_itens_fiscal i WHERE i.nf_id = nf.id), 0) as valor_total
       FROM notas_fiscais nf
-      LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
-      WHERE nf.pedido_id = ?
-      GROUP BY nf.id
+      INNER JOIN nf_pedidos np ON np.nf_id = nf.id
+      WHERE np.pedido_id = ?
       ORDER BY nf.created_at ASC
     `,
       )
       .all(req.params.id);
 
-    const result = nfs.map((nf) => {
-      const itens = db
-        .prepare(
-          `
-        SELECT xProd, qCom, uCom, vProd
-        FROM nf_itens_fiscal
-        WHERE nf_id = ?
-        ORDER BY id ASC
-      `,
-        )
-        .all(nf.id);
-      return { ...nf, itens };
-    });
-
-    res.json(result);
+    res.json(nfs);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2176,26 +2170,26 @@ app.get("/controle-custos", (req, res) => {
     const rows = db
       .prepare(
         `
-      SELECT
-        p.id as pedido_id,
-        p.num_pedido,
-        p.aplicacao,
-        p.data_prevista,
-        p.status as status_pedido,
-        p.data_pedido,
-        nf.id as nf_id,
-        nf.nNF,
-        nf.xNome,
-        nf.tipo,
-        nf.status_pagamento,
-        nf.dhEmi,
-        COALESCE(SUM(i.vProd), 0) as valor_nf
-      FROM pedidos p
-      LEFT JOIN notas_fiscais nf ON nf.pedido_id = p.id
-      LEFT JOIN nf_itens_fiscal i ON i.nf_id = nf.id
-      GROUP BY p.id, nf.id
-      ORDER BY p.aplicacao ASC, p.num_pedido ASC, nf.nNF ASC
-    `,
+  SELECT
+    p.id as pedido_id,
+    p.num_pedido,
+    p.aplicacao,
+    p.data_prevista,
+    p.data_pedido,
+    p.status as status_pedido,
+    nf.id as nf_id,
+    nf.nNF,
+    nf.xNome,
+    nf.tipo,
+    nf.status_pagamento,
+    nf.dhEmi,
+    COALESCE((SELECT SUM(i.vProd) FROM nf_itens_fiscal i WHERE i.nf_id = nf.id), 0) as valor_nf
+  FROM pedidos p
+  LEFT JOIN nf_pedidos np ON np.pedido_id = p.id
+  LEFT JOIN notas_fiscais nf ON nf.id = np.nf_id
+  GROUP BY p.id, nf.id
+  ORDER BY CAST(p.num_pedido AS INTEGER) DESC, p.num_pedido DESC
+`,
       )
       .all();
     res.json(rows);
@@ -2210,15 +2204,8 @@ app.get("/notas-fiscais/:id", (req, res) => {
     const nf = db
       .prepare(
         `
-      SELECT
-        nf.*,
-        p.num_pedido,
-        p.aplicacao,
-        p.fornecedor_id
-      FROM notas_fiscais nf
-      LEFT JOIN pedidos p ON nf.pedido_id = p.id
-      WHERE nf.id = ?
-    `,
+  SELECT nf.* FROM notas_fiscais nf WHERE nf.id = ?
+`,
       )
       .get(req.params.id);
 
@@ -2228,20 +2215,33 @@ app.get("/notas-fiscais/:id", (req, res) => {
     const itens = db
       .prepare(
         `
-      SELECT * FROM nf_itens_fiscal WHERE nf_id = ? ORDER BY id ASC
-    `,
+  SELECT * FROM nf_itens_fiscal WHERE nf_id = ? ORDER BY id ASC
+`,
       )
       .all(req.params.id);
 
     const duplicatas = db
       .prepare(
         `
-      SELECT * FROM nf_duplicatas WHERE nf_id = ? ORDER BY dVenc ASC
-    `,
+  SELECT * FROM nf_duplicatas WHERE nf_id = ? ORDER BY dVenc ASC
+`,
       )
       .all(req.params.id);
 
-    res.json({ ...nf, itens, duplicatas });
+    // get linked pedidos
+    const pedidosVinculados = db
+      .prepare(
+        `
+  SELECT p.id, p.num_pedido, p.aplicacao, f.razao_social
+  FROM nf_pedidos np
+  JOIN pedidos p ON p.id = np.pedido_id
+  LEFT JOIN fornecedores f ON f.id = p.fornecedor_id
+  WHERE np.nf_id = ?
+`,
+      )
+      .all(req.params.id);
+
+    res.json({ ...nf, itens, duplicatas, pedidosVinculados });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2249,34 +2249,47 @@ app.get("/notas-fiscais/:id", (req, res) => {
 
 // PUT - update a nota fiscal (tipo, pedido_id, status_pagamento)
 app.put("/notas-fiscais/:id", (req, res) => {
-  const { tipo, pedido_id, status_pagamento } = req.body;
+  const { tipo, pedido_ids, status_pagamento } = req.body;
   try {
-    // get fornecedor_id from pedido if pedido_id provided
-    let fornecedor_id = null;
-    if (pedido_id) {
-      const pedido = db
-        .prepare(`SELECT fornecedor_id FROM pedidos WHERE id = ?`)
-        .get(pedido_id);
-      fornecedor_id = pedido?.fornecedor_id || null;
-    }
+    const transaction = db.transaction(() => {
+      // get fornecedor_id from first pedido
+      let fornecedor_id = null;
+      if (pedido_ids && pedido_ids.length > 0) {
+        const pedido = db
+          .prepare(`SELECT fornecedor_id FROM pedidos WHERE id = ?`)
+          .get(pedido_ids[0]);
+        fornecedor_id = pedido?.fornecedor_id || null;
+      }
 
-    db.prepare(
-      `
-      UPDATE notas_fiscais SET
-        tipo = ?,
-        pedido_id = ?,
-        fornecedor_id = ?,
-        status_pagamento = ?
-      WHERE id = ?
-    `,
-    ).run(
-      tipo,
-      pedido_id || null,
-      fornecedor_id,
-      status_pagamento,
-      req.params.id,
-    );
+      db.prepare(
+        `
+        UPDATE notas_fiscais SET
+          tipo = ?,
+          pedido_id = ?,
+          fornecedor_id = ?,
+          status_pagamento = ?
+        WHERE id = ?
+      `,
+      ).run(
+        tipo,
+        pedido_ids?.[0] || null,
+        fornecedor_id,
+        status_pagamento,
+        req.params.id,
+      );
 
+      // update junction table
+      db.prepare(`DELETE FROM nf_pedidos WHERE nf_id = ?`).run(req.params.id);
+      for (const pedido_id of pedido_ids || []) {
+        db.prepare(
+          `
+          INSERT OR IGNORE INTO nf_pedidos (nf_id, pedido_id) VALUES (?, ?)
+        `,
+        ).run(req.params.id, pedido_id);
+      }
+    });
+
+    transaction();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2450,6 +2463,29 @@ app.delete("/duplicatas/:id", (req, res) => {
       UPDATE notas_fiscais SET status_pagamento = ? WHERE id = ?
     `,
     ).run(nfStatus, dup.nf_id);
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - update a duplicata
+app.put("/duplicatas/:id", (req, res) => {
+  const { nDup, dVenc, vDup } = req.body;
+  if (!dVenc)
+    return res.status(400).json({ error: "Data de vencimento é obrigatória." });
+
+  try {
+    db.prepare(
+      `
+      UPDATE nf_duplicatas SET
+        nDup = ?,
+        dVenc = ?,
+        vDup = ?
+      WHERE id = ?
+    `,
+    ).run(nDup, dVenc, vDup, req.params.id);
 
     res.json({ success: true });
   } catch (err) {

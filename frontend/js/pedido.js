@@ -275,40 +275,25 @@ async function carregarNFsPedido() {
 
   listaNFs.innerHTML = "";
   nfs.forEach((nf) => {
-    const itensList =
-      nf.itens.length > 0
-        ? nf.itens
-            .map(
-              (i) => `
-              <li>
-                ${i.xProd} — 
-                ${i.qCom} ${i.uCom} — 
-                ${i.vProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </li>`,
-            )
-            .join("")
-        : "<li>Nenhum item na nota fiscal</li>";
-
     const div = document.createElement("div");
     div.className = "nf-item";
     div.innerHTML = `
-      <div class="nf-header">
-        <strong>NF ${nf.nNF}</strong>
-        <span>${nf.xNome}</span>
-        <span>${
-          nf.valor_total
-            ? nf.valor_total.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })
-            : "-"
-        }</span>
-        <span class="nf-status ${nf.status_pagamento === "Paga" ? "status-paga" : "status-aberta"}">
-          ${nf.status_pagamento}
-        </span>
-      </div>
-      <ul class="nf-itens-list">${itensList}</ul>
-    `;
+    <div class="nf-header">
+      <strong>NF ${nf.nNF}</strong>
+      <span>${nf.xNome}</span>
+      <span>${
+        nf.valor_total
+          ? nf.valor_total.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })
+          : "-"
+      }</span>
+      <span class="nf-status ${nf.status_pagamento === "Paga" ? "status-paga" : "status-aberta"}">
+        ${nf.status_pagamento}
+      </span>
+    </div>
+  `;
     listaNFs.appendChild(div);
   });
 }
@@ -361,7 +346,7 @@ async function carregarPedido(id) {
     tr.innerHTML = `
       <td><input type="checkbox" class="row-select"></td>
       <td>${index + 1}</td>
-      <td contenteditable="true" class="quantidade">${item.quantidade}</td>
+<td contenteditable="true" class="quantidade">${item.quantidade != null ? String(item.quantidade).replace(".", ",") : ""}</td>
       <td contenteditable="true">${item.descricao}</td>
       <td contenteditable="true">${item.unidade}</td>
       <td contenteditable="true" class="val-unitario">${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
