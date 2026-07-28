@@ -135,6 +135,17 @@ function renderTabela() {
           ${nf.status_pagamento ?? "-"}
         </span>
       </td>
+      <td>
+  <span style="color: ${
+    nf.direcao === "Saída"
+      ? "#084298"
+      : nf.direcao === "Sem valor financeiro"
+        ? "#6c757d"
+        : "#dc3545"
+  }; font-weight: bold;">
+    ${nf.direcao ?? "Entrada"}
+  </span>
+</td>
       <td class="no-print">
         <a href="../pages/editarNF.html?id=${nf.id}">✏️</a>
         <button type="button" class="btn-deletar-nf" data-id="${nf.id}"

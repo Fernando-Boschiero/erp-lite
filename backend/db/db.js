@@ -267,6 +267,7 @@ db.prepare(
     dhEmi TEXT,
     xNome TEXT,
     tipo TEXT,                            -- tipo da nota fiscal
+    direcao TEXT DEFAULT 'Entrada',
     status_pagamento TEXT DEFAULT 'Aberta',
     created_at TEXT DEFAULT (datetime('now')),
     FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE SET NULL,

@@ -1930,6 +1930,7 @@ app.get("/notas-fiscais", (req, res) => {
     nf.dhEmi,
     nf.xNome,
     nf.tipo,
+    nf.direcao,
     nf.status_pagamento,
     nf.created_at,
     p.num_pedido,
@@ -2003,6 +2004,7 @@ app.post("/notas-fiscais", (req, res) => {
     dhEmi,
     xNome,
     tipo,
+    direcao,
     itens,
     duplicatas,
   } = req.body;
@@ -2015,9 +2017,9 @@ app.post("/notas-fiscais", (req, res) => {
       const result = db
         .prepare(
           `
-        INSERT INTO notas_fiscais (pedido_id, fornecedor_id, cotacao_id, nNF, dhEmi, xNome, tipo)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `,
+  INSERT INTO notas_fiscais (pedido_id, fornecedor_id, cotacao_id, nNF, dhEmi, xNome, tipo, direcao)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`,
         )
         .run(
           pedido_ids?.[0] || null, // keep first pedido_id for backward compatibility
@@ -2027,6 +2029,7 @@ app.post("/notas-fiscais", (req, res) => {
           dhEmi,
           xNome,
           tipo || null,
+          direcao || "Entrada",
         );
 
       const nfId = result.lastInsertRowid;
@@ -2249,7 +2252,7 @@ app.get("/notas-fiscais/:id", (req, res) => {
 
 // PUT - update a nota fiscal (tipo, pedido_id, status_pagamento)
 app.put("/notas-fiscais/:id", (req, res) => {
-  const { tipo, pedido_ids, status_pagamento } = req.body;
+  const { tipo, pedido_ids, status_pagamento, direcao } = req.body;
   try {
     const transaction = db.transaction(() => {
       // get fornecedor_id from first pedido
@@ -2263,18 +2266,20 @@ app.put("/notas-fiscais/:id", (req, res) => {
 
       db.prepare(
         `
-        UPDATE notas_fiscais SET
-          tipo = ?,
-          pedido_id = ?,
-          fornecedor_id = ?,
-          status_pagamento = ?
-        WHERE id = ?
-      `,
+  UPDATE notas_fiscais SET
+    tipo = ?,
+    pedido_id = ?,
+    fornecedor_id = ?,
+    status_pagamento = ?,
+    direcao = ?
+  WHERE id = ?
+`,
       ).run(
         tipo,
         pedido_ids?.[0] || null,
         fornecedor_id,
         status_pagamento,
+        direcao || "Entrada",
         req.params.id,
       );
 
@@ -2329,7 +2334,8 @@ app.get("/duplicatas/calendario/:ano/:mes", (req, res) => {
         d.data_pagamento,
         nf.nNF,
         nf.xNome,
-        nf.tipo
+        nf.tipo,
+        nf.direcao
       FROM nf_duplicatas d
       JOIN notas_fiscais nf ON nf.id = d.nf_id
       WHERE strftime('%Y', d.dVenc) = ? 

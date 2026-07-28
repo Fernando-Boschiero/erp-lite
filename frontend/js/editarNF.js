@@ -39,7 +39,9 @@ async function carregarPedidos() {
 async function carregarNF() {
   const res = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`);
   nfData = await res.json();
-  console.log("nfData:", JSON.stringify(nfData));
+
+  const direcaoNF = document.getElementById("direcaoNF");
+  if (direcaoNF) direcaoNF.value = nfData.direcao ?? "Entrada";
 
   pedidosSelecionados = (nfData.pedidosVinculados || []).map((p) => ({
     id: p.id,
@@ -232,14 +234,14 @@ async function carregarNF() {
   const secaoAdicionarDup = document.getElementById(
     "secao-adicionar-duplicata",
   );
-  if (
-    secaoAdicionarDup &&
-    nfData.duplicatas &&
-    nfData.duplicatas.length === 0
-  ) {
-    secaoAdicionarDup.style.display = "block";
-  } else if (secaoAdicionarDup) {
-    secaoAdicionarDup.style.display = "none";
+  if (secaoAdicionarDup) {
+    if (nfData.direcao === "Sem valor financeiro") {
+      secaoAdicionarDup.style.display = "none";
+    } else if (nfData.duplicatas && nfData.duplicatas.length === 0) {
+      secaoAdicionarDup.style.display = "block";
+    } else {
+      secaoAdicionarDup.style.display = "none";
+    }
   }
 }
 
@@ -372,6 +374,7 @@ if (btnSalvar) {
         nfData.duplicatas && nfData.duplicatas.length === 0
           ? statusPagamento.value
           : undefined,
+      direcao: direcaoNF?.value || "Entrada",
     };
 
     const result = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`, {

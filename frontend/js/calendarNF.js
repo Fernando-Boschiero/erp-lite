@@ -15,6 +15,7 @@ const tooltip = document.getElementById("dup-tooltip");
 const tooltipContent = document.getElementById("tooltip-content");
 const tooltipPagar = document.getElementById("tooltip-pagar");
 const tooltipReabrir = document.getElementById("tooltip-reabrir");
+const filterSaidas = document.getElementById("filter-saidas");
 
 /* ─── FETCH DUPLICATAS ─── */
 async function carregarDuplicatas() {
@@ -71,6 +72,7 @@ function renderCalendar() {
   // filter duplicatas
   const showAbertas = filterAbertas.checked;
   const showPagas = filterPagas.checked;
+  const showSaidas = filterSaidas ? filterSaidas.checked : true;
 
   // day cells
   for (let dia = 1; dia <= diasNoMes; dia++) {
@@ -92,13 +94,25 @@ function renderCalendar() {
     const dups = duplicatasDoMes.filter((d) => d.dVenc === diaStr);
 
     dups.forEach((dup) => {
-      if (dup.status === "Aberta" && !showAbertas) return;
-      if (dup.status === "Paga" && !showPagas) return;
+      if (dup.direcao === "Saída" && !showSaidas) return;
+      if (dup.direcao !== "Saída" && dup.status === "Aberta" && !showAbertas)
+        return;
+      if (dup.direcao !== "Saída" && dup.status === "Paga" && !showPagas)
+        return;
 
+      const isSaida = dup.direcao === "Saída";
       const isVencida = dup.status === "Aberta" && dataCell < hoje;
 
       const entry = document.createElement("div");
-      entry.className = `dup-entry ${dup.status === "Paga" ? "paga" : isVencida ? "aberta vencida" : "aberta"}`;
+      entry.className = `dup-entry ${
+        isSaida
+          ? "saida"
+          : dup.status === "Paga"
+            ? "paga"
+            : isVencida
+              ? "aberta vencida"
+              : "aberta"
+      }`;
       entry.textContent =
         "NF " +
         (dup.nNF.startsWith("MANUAL-") ? "Manual - " + dup.xNome : dup.nNF);
@@ -278,6 +292,9 @@ if (btnMesProximo) {
 
 if (filterAbertas) filterAbertas.addEventListener("change", renderCalendar);
 if (filterPagas) filterPagas.addEventListener("change", renderCalendar);
+if (filterSaidas) filterSaidas.addEventListener("change", renderCalendar);
 
 /* ─── INIT ─── */
-carregarDuplicatas();
+document.addEventListener("DOMContentLoaded", () => {
+  carregarDuplicatas();
+});

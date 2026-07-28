@@ -205,6 +205,11 @@ form select {
 
 /* CSS FOR THE TABLE */
 
+.hr-arquivos {
+  width: 100%;
+  border: black dashed 5px;
+}
+
 table {
   margin: 5mm 0 3mm 0;
   width: 100%;
