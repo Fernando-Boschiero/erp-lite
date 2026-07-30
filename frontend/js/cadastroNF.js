@@ -16,6 +16,7 @@ const vinculoCotacao = document.getElementById("vinculo-cotacao");
 const tiposComPedido = [
   "PC - Aluguel de Equipamento",
   "PC - Ativo",
+  "PC - Benefícios",
   "PC - Carta de Correção",
   "PC - Complementar",
   "PC - Contas de Consumo",

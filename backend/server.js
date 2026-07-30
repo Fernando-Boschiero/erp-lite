@@ -2684,6 +2684,262 @@ app.get("/relatorios/kpi", (req, res) => {
   }
 });
 
+// GET - fluxo de caixa
+app.get("/relatorios/fluxo-caixa", (req, res) => {
+  try {
+    const { inicio, fim } = req.query;
+
+    // default to last 6 months if no range provided
+    const dataFim = fim || new Date().toISOString().split("T")[0];
+    const dataInicio =
+      inicio ||
+      (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 5);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+      })();
+
+    // get all duplicatas in range grouped by month
+    const duplicatas = db
+      .prepare(
+        `
+      SELECT
+        strftime('%Y-%m', d.dVenc) as mes,
+        nf.direcao,
+        d.status,
+        COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.dVenc >= ? AND d.dVenc <= ?
+        AND nf.direcao != 'Sem valor financeiro'
+      GROUP BY mes, nf.direcao, d.status
+      ORDER BY mes ASC
+    `,
+      )
+      .all(dataInicio, dataFim);
+
+    // build month-by-month summary
+    const meses = {};
+    duplicatas.forEach((row) => {
+      if (!meses[row.mes]) {
+        meses[row.mes] = {
+          mes: row.mes,
+          entradasPagas: 0,
+          entradasAbertas: 0,
+          saidasPagas: 0,
+          saidasAbertas: 0,
+        };
+      }
+      if (row.direcao === "Saída" && row.status === "Paga")
+        meses[row.mes].entradasPagas += row.total;
+      if (row.direcao === "Saída" && row.status === "Aberta")
+        meses[row.mes].entradasAbertas += row.total;
+      if (row.direcao === "Entrada" && row.status === "Paga")
+        meses[row.mes].saidasPagas += row.total;
+      if (row.direcao === "Entrada" && row.status === "Aberta")
+        meses[row.mes].saidasAbertas += row.total;
+    });
+
+    // calculate running balance
+    let saldoAcumulado = 0;
+    const resultado = Object.values(meses).map((m) => {
+      const entradaTotal = m.entradasPagas + m.entradasAbertas;
+      const saidaTotal = m.saidasPagas + m.saidasAbertas;
+      const saldoMes = entradaTotal - saidaTotal;
+      saldoAcumulado += saldoMes;
+      return {
+        ...m,
+        entradaTotal,
+        saidaTotal,
+        saldoMes,
+        saldoAcumulado,
+      };
+    });
+
+    res.json(resultado);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - pagamentos por período
+app.get("/relatorios/pagamentos", (req, res) => {
+  try {
+    const { inicio, fim, status, direcao } = req.query;
+
+    const hoje = new Date().toISOString().split("T")[0];
+    const dataFim = fim || hoje;
+    const dataInicio =
+      inicio ||
+      (() => {
+        const d = new Date();
+        d.setDate(1);
+        return d.toISOString().split("T")[0];
+      })();
+
+    let whereClause = `WHERE d.dVenc >= ? AND d.dVenc <= ?`;
+    const params = [dataInicio, dataFim];
+
+    if (status && status !== "Todos") {
+      whereClause += ` AND d.status = ?`;
+      params.push(status);
+    }
+    if (direcao && direcao !== "Todos") {
+      whereClause += ` AND nf.direcao = ?`;
+      params.push(direcao);
+    }
+
+    whereClause += ` AND nf.direcao != 'Sem valor financeiro'`;
+
+    const rows = db
+      .prepare(
+        `
+      SELECT
+        d.id,
+        d.nDup,
+        d.dVenc,
+        d.vDup,
+        d.status,
+        d.data_pagamento,
+        nf.id as nf_id,
+        nf.nNF,
+        nf.xNome,
+        nf.tipo,
+        nf.direcao,
+        p.num_pedido,
+        p.aplicacao
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      LEFT JOIN pedidos p ON p.id = nf.pedido_id
+      ${whereClause}
+      ORDER BY d.dVenc ASC
+    `,
+      )
+      .all(...params);
+
+    // summary totals
+    const totalAberto = rows
+      .filter((r) => r.status === "Aberta")
+      .reduce((s, r) => s + r.vDup, 0);
+    const totalPago = rows
+      .filter((r) => r.status === "Paga")
+      .reduce((s, r) => s + r.vDup, 0);
+    const totalEntradas = rows
+      .filter((r) => r.direcao === "Saída")
+      .reduce((s, r) => s + r.vDup, 0);
+    const totalSaidas = rows
+      .filter((r) => r.direcao === "Entrada")
+      .reduce((s, r) => s + r.vDup, 0);
+
+    res.json({ rows, totalAberto, totalPago, totalEntradas, totalSaidas });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - custos por projeto
+app.get("/relatorios/custos-projeto", (req, res) => {
+  try {
+    const { inicio, fim, aplicacao } = req.query;
+
+    const hoje = new Date().toISOString().split("T")[0];
+    const dataFim = fim || hoje;
+    const dataInicio =
+      inicio ||
+      (() => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - 1);
+        return d.toISOString().split("T")[0];
+      })();
+
+    // get all aplicacoes for filter dropdown
+    const aplicacoes = db
+      .prepare(
+        `
+      SELECT DISTINCT p.aplicacao
+      FROM pedidos p
+      WHERE p.aplicacao IS NOT NULL AND p.aplicacao != ''
+      ORDER BY p.aplicacao ASC
+    `,
+      )
+      .all();
+
+    let whereClause = `WHERE d.dVenc >= ? AND d.dVenc <= ?
+      AND nf.direcao = 'Entrada'
+      AND nf.direcao != 'Sem valor financeiro'`;
+    const params = [dataInicio, dataFim];
+
+    if (aplicacao && aplicacao !== "Todos") {
+      whereClause += ` AND p.aplicacao = ?`;
+      params.push(aplicacao);
+    }
+
+    // costs by project
+    const rows = db
+      .prepare(
+        `
+      SELECT
+        p.aplicacao,
+        p.num_pedido,
+        nf.nNF,
+        nf.xNome,
+        nf.tipo,
+        d.nDup,
+        d.dVenc,
+        d.vDup,
+        d.status,
+        nf.id as nf_id
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      LEFT JOIN nf_pedidos np ON np.nf_id = nf.id
+      LEFT JOIN pedidos p ON p.id = np.pedido_id
+      ${whereClause}
+      ORDER BY p.aplicacao ASC, d.dVenc ASC
+    `,
+      )
+      .all(...params);
+
+    // group by aplicacao
+    const porProjeto = {};
+    rows.forEach((row) => {
+      const proj = row.aplicacao || "Sem Projeto";
+      if (!porProjeto[proj]) {
+        porProjeto[proj] = {
+          aplicacao: proj,
+          total: 0,
+          pago: 0,
+          aberto: 0,
+          nfs: [],
+        };
+      }
+      porProjeto[proj].total += row.vDup;
+      if (row.status === "Paga") porProjeto[proj].pago += row.vDup;
+      else porProjeto[proj].aberto += row.vDup;
+      porProjeto[proj].nfs.push(row);
+    });
+
+    // chart data — top projects by total cost
+    const chartData = Object.values(porProjeto)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+
+    res.json({
+      porProjeto: Object.values(porProjeto),
+      chartData,
+      aplicacoes: aplicacoes.map((a) => a.aplicacao),
+      totalGeral: rows.reduce((s, r) => s + r.vDup, 0),
+      totalPago: rows
+        .filter((r) => r.status === "Paga")
+        .reduce((s, r) => s + r.vDup, 0),
+      totalAberto: rows
+        .filter((r) => r.status === "Aberta")
+        .reduce((s, r) => s + r.vDup, 0),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

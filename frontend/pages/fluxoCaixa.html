@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/relatorios.css" />
+    <title>Fluxo de Caixa</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="relatorio-container">
+      <h1>FLUXO DE CAIXA</h1>
+
+      <!-- FILTERS -->
+      <div class="relatorio-filters">
+        <label>De:</label>
+        <input type="date" id="dataInicio" />
+        <label>Até:</label>
+        <input type="date" id="dataFim" />
+        <button type="button" class="btn-relatorio" id="btn-atualizar">
+          Atualizar
+        </button>
+        <button type="button" class="btn-relatorio secondary" id="btn-pdf">
+          🖨️ Exportar PDF
+        </button>
+      </div>
+
+      <!-- KPI SUMMARY -->
+      <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr)">
+        <div class="kpi-card success">
+          <div class="kpi-label">Total Entradas (período)</div>
+          <div class="kpi-value" id="total-entradas">R$ -</div>
+          <div class="kpi-sub">Recebíveis no período</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Total Saídas (período)</div>
+          <div class="kpi-value" id="total-saidas">R$ -</div>
+          <div class="kpi-sub">Custos no período</div>
+        </div>
+        <div class="kpi-card info" id="card-saldo-periodo">
+          <div class="kpi-label">Saldo do Período</div>
+          <div class="kpi-value" id="saldo-periodo">R$ -</div>
+          <div class="kpi-sub">Entradas - Saídas</div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="chart-card" style="margin-bottom: 20px">
+        <h2>Entradas vs Saídas por Mês</h2>
+        <div class="chart-wrapper" style="height: 300px">
+          <canvas id="chart-bar"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom: 20px">
+        <h2>Saldo Acumulado</h2>
+        <div class="chart-wrapper" style="height: 200px">
+          <canvas id="chart-line"></canvas>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="chart-card">
+        <h2>Detalhamento por Mês</h2>
+        <table
+          id="tabela-fluxo"
+          style="width: 100%; border-collapse: collapse; font-size: 0.9rem">
+          <thead>
+            <tr>
+              <th class="th-relatorio">Mês</th>
+              <th class="th-relatorio">Entradas Pagas</th>
+              <th class="th-relatorio">Entradas em Aberto</th>
+              <th class="th-relatorio">Saídas Pagas</th>
+              <th class="th-relatorio">Saídas em Aberto</th>
+              <th class="th-relatorio">Saldo do Mês</th>
+              <th class="th-relatorio">Saldo Acumulado</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-fluxo-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/fluxoCaixa.js"></script>
+  </body>
+</html>

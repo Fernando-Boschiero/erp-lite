@@ -4,6 +4,7 @@ let pedidos = [];
 const tiposComPedido = [
   "PC - Aluguel de Equipamento",
   "PC - Ativo",
+  "PC - Benefícios",
   "PC - Carta de Correção",
   "PC - Complementar",
   "PC - Contas de Consumo",

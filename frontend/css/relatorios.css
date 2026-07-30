@@ -159,3 +159,30 @@
 .btn-relatorio.secondary:hover {
   background: #5a6268;
 }
+
+.th-relatorio {
+  background: #1a5c35;
+  color: white;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.td-relatorio {
+  padding: 8px 12px;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 0.85rem;
+}
+
+.td-relatorio.positive {
+  color: #198754;
+  font-weight: 600;
+}
+.td-relatorio.negative {
+  color: #dc3545;
+  font-weight: 600;
+}
+.td-relatorio.neutral {
+  color: #6c757d;
+}

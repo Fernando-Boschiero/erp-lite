@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/relatorios.css" />
+    <title>Pagamentos por Período</title>
+  </head>
+  <body>
+    <div class="relatorio-container">
+      <h1>PAGAMENTOS POR PERÍODO</h1>
+
+      <!-- FILTERS -->
+      <div class="relatorio-filters">
+        <label>De:</label>
+        <input type="date" id="dataInicio" />
+        <label>Até:</label>
+        <input type="date" id="dataFim" />
+        <label>Status:</label>
+        <select id="filtroStatus">
+          <option value="Todos">Todos</option>
+          <option value="Aberta">Em Aberto</option>
+          <option value="Paga">Pagos</option>
+        </select>
+        <label>Direção:</label>
+        <select id="filtroDirecao">
+          <option value="Todos">Todos</option>
+          <option value="Entrada">Saídas (Custos)</option>
+          <option value="Saída">Entradas (Recebíveis)</option>
+        </select>
+        <button type="button" class="btn-relatorio" id="btn-atualizar">
+          Atualizar
+        </button>
+        <button type="button" class="btn-relatorio secondary" id="btn-pdf">
+          🖨️ Exportar PDF
+        </button>
+      </div>
+
+      <!-- KPI SUMMARY -->
+      <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr)">
+        <div class="kpi-card warning">
+          <div class="kpi-label">Em Aberto</div>
+          <div class="kpi-value" id="total-aberto">R$ -</div>
+          <div class="kpi-sub">No período</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">Pagos</div>
+          <div class="kpi-value" id="total-pago">R$ -</div>
+          <div class="kpi-sub">No período</div>
+        </div>
+        <div class="kpi-card info">
+          <div class="kpi-label">Total Entradas</div>
+          <div class="kpi-value" id="total-entradas">R$ -</div>
+          <div class="kpi-sub">Recebíveis</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Total Saídas</div>
+          <div class="kpi-value" id="total-saidas">R$ -</div>
+          <div class="kpi-sub">Custos</div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="chart-card">
+        <h2>
+          Duplicatas no Período
+          <span
+            id="total-registros"
+            style="
+              font-weight: normal;
+              font-size: 0.85rem;
+              color: #6c757d;
+            "></span>
+        </h2>
+        <table
+          style="width: 100%; border-collapse: collapse; font-size: 0.9rem">
+          <thead>
+            <tr>
+              <th class="th-relatorio">Vencimento</th>
+              <th class="th-relatorio">NF</th>
+              <th class="th-relatorio">Fornecedor / Cliente</th>
+              <th class="th-relatorio">Tipo</th>
+              <th class="th-relatorio">Direção</th>
+              <th class="th-relatorio">Nº Dup.</th>
+              <th class="th-relatorio">Valor</th>
+              <th class="th-relatorio">Status</th>
+              <th class="th-relatorio">Data Pagamento</th>
+              <th class="th-relatorio">Pedido</th>
+              <th class="th-relatorio">Aplicação</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-pagamentos-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/pagamentosPeriodo.js"></script>
+  </body>
+</html>
