@@ -2,12 +2,28 @@
 let nfData = null;
 let pedidos = [];
 const tiposComPedido = [
-  "Consumível",
-  "Despachante",
-  "Embalagem",
-  "Frete",
-  "Matéria Prima",
-  "Serviço - Compra",
+  "PC - Aluguel de Equipamento",
+  "PC - Ativo",
+  "PC - Carta de Correção",
+  "PC - Complementar",
+  "PC - Contas de Consumo",
+  "PC - Consumível Fábrica",
+  "PC - Consumível Pessoal",
+  "PC - Demonstração",
+  "PC - Despachante",
+  "PC - Devolução",
+  "PC - Embalagem",
+  "PC - Entrada",
+  "PC - Frete",
+  "PC - Garantia",
+  "PC - Industrialização",
+  "PC - Manutenção",
+  "PC - Matéria Prima",
+  "PC - Material de Escritório",
+  "PC - Medicina do Trabalho",
+  "PC - Serviço",
+  "PC - TI",
+  "PC - Veículos",
 ];
 const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
@@ -136,16 +152,10 @@ async function carregarNF() {
     <td style="color: ${dup.status === "Paga" ? "#198754" : "#dc3545"}; font-weight: bold;">
       ${dup.status ?? "-"}
     </td>
-    <td class="no-print">
-      ${
-        dup.manual
-          ? `
-        <button type="button" class="btn-deletar-duplicata" data-id="${dup.id}"
-          style="background: none; border: none; cursor: pointer;">🗑️</button>
-      `
-          : ""
-      }
-    </td>
+<td class="no-print">
+  <button type="button" class="btn-deletar-duplicata" data-id="${dup.id}"
+    style="background: none; border: none; cursor: pointer;">🗑️</button>
+</td>
   `;
     dupBody.appendChild(tr);
   });
@@ -237,10 +247,8 @@ async function carregarNF() {
   if (secaoAdicionarDup) {
     if (nfData.direcao === "Sem valor financeiro") {
       secaoAdicionarDup.style.display = "none";
-    } else if (nfData.duplicatas && nfData.duplicatas.length === 0) {
-      secaoAdicionarDup.style.display = "block";
     } else {
-      secaoAdicionarDup.style.display = "none";
+      secaoAdicionarDup.style.display = "block";
     }
   }
 }

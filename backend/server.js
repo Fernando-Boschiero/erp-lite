@@ -2435,10 +2435,6 @@ app.delete("/duplicatas/:id", (req, res) => {
 
     if (!dup)
       return res.status(404).json({ error: "Duplicata não encontrada." });
-    if (!dup.manual)
-      return res.status(403).json({
-        error: "Apenas duplicatas adicionadas manualmente podem ser excluídas.",
-      });
 
     db.prepare(`DELETE FROM nf_duplicatas WHERE id = ?`).run(req.params.id);
 
@@ -2543,6 +2539,146 @@ app.post("/notas-fiscais/manual", (req, res) => {
 
     const nfId = transaction();
     res.json({ success: true, id: nfId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+//START OF THE ERP REPORTS SECTION
+// GET - KPI dashboard data
+app.get("/relatorios/kpi", (req, res) => {
+  try {
+    const mes = req.query.mes || new Date().toISOString().substring(0, 7);
+    const [ano, mesNum] = mes.split("-");
+    const inicioMes = `${mes}-01`;
+    const fimMes = new Date(parseInt(ano), parseInt(mesNum), 0)
+      .toISOString()
+      .split("T")[0];
+    const hoje = new Date().toISOString().split("T")[0];
+
+    // A Pagar este mês (Entrada, Aberta, vence este mês)
+    const aPagar = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.status = 'Aberta'
+        AND nf.direcao = 'Entrada'
+        AND d.dVenc >= ? AND d.dVenc <= ?
+    `,
+      )
+      .get(inicioMes, fimMes);
+
+    // A Receber este mês (Saída, Aberta, vence este mês)
+    const aReceber = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.status = 'Aberta'
+        AND nf.direcao = 'Saída'
+        AND d.dVenc >= ? AND d.dVenc <= ?
+    `,
+      )
+      .get(inicioMes, fimMes);
+
+    // Vencido em aberto (all directions, overdue)
+    const vencido = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.status = 'Aberta'
+        AND d.dVenc < ?
+        AND nf.direcao != 'Sem valor financeiro'
+    `,
+      )
+      .get(hoje);
+
+    // last 6 months bar chart data
+    const ultimos6Meses = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const ano = d.getFullYear();
+      const mes = String(d.getMonth() + 1).padStart(2, "0");
+      const inicio = `${ano}-${mes}-01`;
+      const fim = new Date(ano, d.getMonth() + 1, 0)
+        .toISOString()
+        .split("T")[0];
+
+      const entradas = db
+        .prepare(
+          `
+        SELECT COALESCE(SUM(d.vDup), 0) as total
+        FROM nf_duplicatas d
+        JOIN notas_fiscais nf ON nf.id = d.nf_id
+        WHERE nf.direcao = 'Saída'
+          AND d.dVenc >= ? AND d.dVenc <= ?
+      `,
+        )
+        .get(inicio, fim);
+
+      const saidas = db
+        .prepare(
+          `
+        SELECT COALESCE(SUM(d.vDup), 0) as total
+        FROM nf_duplicatas d
+        JOIN notas_fiscais nf ON nf.id = d.nf_id
+        WHERE nf.direcao = 'Entrada'
+          AND d.dVenc >= ? AND d.dVenc <= ?
+      `,
+        )
+        .get(inicio, fim);
+
+      ultimos6Meses.push({
+        mes: `${mes}/${ano}`,
+        entradas: entradas.total,
+        saidas: saidas.total,
+      });
+    }
+
+    // donut chart — open vs paid this month
+    const dupAbertasMes = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.status = 'Aberta'
+        AND d.dVenc >= ? AND d.dVenc <= ?
+        AND nf.direcao != 'Sem valor financeiro'
+    `,
+      )
+      .get(inicioMes, fimMes);
+
+    const dupPagasMes = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(d.vDup), 0) as total
+      FROM nf_duplicatas d
+      JOIN notas_fiscais nf ON nf.id = d.nf_id
+      WHERE d.status = 'Paga'
+        AND d.data_pagamento >= ? AND d.data_pagamento <= ?
+        AND nf.direcao != 'Sem valor financeiro'
+    `,
+      )
+      .get(inicioMes, fimMes);
+
+    res.json({
+      aPagar: aPagar.total,
+      aReceber: aReceber.total,
+      vencido: vencido.total,
+      saldoProjetado: aReceber.total - aPagar.total,
+      ultimos6Meses,
+      donut: {
+        abertas: dupAbertasMes.total,
+        pagas: dupPagasMes.total,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

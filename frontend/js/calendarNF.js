@@ -95,26 +95,35 @@ function renderCalendar() {
 
     dups.forEach((dup) => {
       if (dup.direcao === "Saída" && !showSaidas) return;
+      if (dup.direcao === "Saída" && dup.status === "Paga" && !showPagas)
+        return;
       if (dup.direcao !== "Saída" && dup.status === "Aberta" && !showAbertas)
         return;
       if (dup.direcao !== "Saída" && dup.status === "Paga" && !showPagas)
         return;
 
       const isSaida = dup.direcao === "Saída";
-      const isVencida = dup.status === "Aberta" && dataCell < hoje;
+      const isPaga = dup.status === "Paga";
+      const isVencida = !isPaga && dataCell < hoje;
 
       const entry = document.createElement("div");
       entry.className = `dup-entry ${
-        isSaida
-          ? "saida"
-          : dup.status === "Paga"
-            ? "paga"
-            : isVencida
-              ? "aberta vencida"
-              : "aberta"
+        isSaida && isPaga
+          ? "saida paga"
+          : isSaida
+            ? "saida"
+            : isPaga
+              ? "paga"
+              : isVencida
+                ? "aberta vencida"
+                : "aberta"
       }`;
+
+      const arrow = dup.direcao === "Saída" ? "↑" : "↓";
+
       entry.textContent =
-        "NF " +
+        arrow +
+        " NF " +
         (dup.nNF.startsWith("MANUAL-") ? "Manual - " + dup.xNome : dup.nNF);
       entry.dataset.dupId = dup.id;
 

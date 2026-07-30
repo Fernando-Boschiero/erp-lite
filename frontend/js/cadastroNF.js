@@ -14,12 +14,28 @@ const tipoNF = document.getElementById("tipoNF");
 const vinculoPedido = document.getElementById("vinculo-pedido");
 const vinculoCotacao = document.getElementById("vinculo-cotacao");
 const tiposComPedido = [
-  "Consumível",
-  "Despachante",
-  "Embalagem",
-  "Frete",
-  "Matéria Prima",
-  "Serviço - Compra",
+  "PC - Aluguel de Equipamento",
+  "PC - Ativo",
+  "PC - Carta de Correção",
+  "PC - Complementar",
+  "PC - Contas de Consumo",
+  "PC - Consumível Fábrica",
+  "PC - Consumível Pessoal",
+  "PC - Demonstração",
+  "PC - Despachante",
+  "PC - Devolução",
+  "PC - Embalagem",
+  "PC - Entrada",
+  "PC - Frete",
+  "PC - Garantia",
+  "PC - Industrialização",
+  "PC - Manutenção",
+  "PC - Matéria Prima",
+  "PC - Material de Escritório",
+  "PC - Medicina do Trabalho",
+  "PC - Serviço",
+  "PC - TI",
+  "PC - Veículos",
 ];
 const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
@@ -258,6 +274,19 @@ function processarNFe(xml) {
       dVenc: getVal(dup, "dVenc"),
       vDup: parseFloat(getVal(dup, "vDup")) || 0,
     });
+  }
+
+  // if no duplicatas found, create one with total NF value
+  if (duplicatas.length === 0) {
+    const totalNode = xml.getElementsByTagName("ICMSTot")[0];
+    const vNF = parseFloat(getVal(totalNode, "vNF")) || 0;
+    if (vNF > 0) {
+      duplicatas.push({
+        nDup: "001",
+        dVenc: "", // no due date available — customer adds manually
+        vDup: vNF,
+      });
+    }
   }
 
   dadosXML = { nNF, dhEmi, xNome, itens, duplicatas };

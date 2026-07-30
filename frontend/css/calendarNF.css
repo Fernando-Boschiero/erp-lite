@@ -128,6 +128,12 @@
 }
 
 .dup-entry.saida {
+  background: #fff3cd;
+  color: #856404;
+  border-left: 3px solid #0d6efd;
+}
+
+.dup-entry.saida.paga {
   background: #cfe2ff;
   color: #084298;
   border-left: 3px solid #0d6efd;

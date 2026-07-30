@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/relatorios.css" />
+    <title>Resumo Financeiro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="relatorio-container">
+      <h1>RESUMO FINANCEIRO</h1>
+
+      <!-- FILTERS -->
+      <div class="relatorio-filters">
+        <label>Mês de referência:</label>
+        <input type="month" id="mesFiltro" />
+        <button type="button" class="btn-relatorio" id="btn-atualizar">
+          Atualizar
+        </button>
+        <button type="button" class="btn-relatorio secondary" id="btn-pdf">
+          🖨️ Exportar PDF
+        </button>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card warning">
+          <div class="kpi-label">A Pagar este mês</div>
+          <div class="kpi-value" id="kpi-a-pagar">R$ -</div>
+          <div class="kpi-sub">Duplicatas em aberto</div>
+        </div>
+        <div class="kpi-card success">
+          <div class="kpi-label">A Receber este mês</div>
+          <div class="kpi-value" id="kpi-a-receber">R$ -</div>
+          <div class="kpi-sub">Duplicatas em aberto</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Vencido em Aberto</div>
+          <div class="kpi-value" id="kpi-vencido">R$ -</div>
+          <div class="kpi-sub">Todas as direções</div>
+        </div>
+        <div class="kpi-card info" id="card-saldo">
+          <div class="kpi-label">Saldo Projetado</div>
+          <div class="kpi-value" id="kpi-saldo">R$ -</div>
+          <div class="kpi-sub">A Receber - A Pagar</div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h2>Entradas vs Saídas — Últimos 6 Meses</h2>
+          <div class="chart-wrapper">
+            <canvas id="chart-bar"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h2>Duplicatas do Mês</h2>
+          <div class="chart-wrapper">
+            <canvas id="chart-donut"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/kpi.js"></script>
+  </body>
+</html>
