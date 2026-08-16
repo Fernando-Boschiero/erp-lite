@@ -45,7 +45,11 @@ async function carregarKPI() {
   const barEntradas = data.ultimos6Meses.map((m) => m.entradas);
   const barSaidas = data.ultimos6Meses.map((m) => m.saidas);
 
-  if (barChart) barChart.destroy();
+  if (barChart) {
+    barChart.destroy();
+    barChart = null;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 50));
   barChart = new Chart(document.getElementById("chart-bar"), {
     type: "bar",
     data: {

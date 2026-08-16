@@ -101,6 +101,8 @@ db.prepare(
     cond_pagamento TEXT,
     validade_proposta TEXT,           -- e.g. "15 dias"
     moeda TEXT DEFAULT 'BRL',        -- BRL or USD
+    instalacao TEXT DEFAULT 'cliente',
+    frete TEXT DEFAULT 'cliente',
 
     -- Boilerplate
     condicoes_gerais TEXT,            -- pre-filled with standard text, editable if needed
@@ -147,6 +149,26 @@ db.prepare(
     alterado_por TEXT,                -- who made the change (free text until users table exists)
     alterado_em TEXT DEFAULT (datetime('now')), -- when it was changed
     observacao TEXT,                  -- optional note explaining the change
+    FOREIGN KEY (cotacao_id) REFERENCES cotacoes(id) ON DELETE CASCADE
+  )
+`,
+).run();
+
+// COTACAO_PAGAMENTOS - projeções de pagamento estruturadas
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS cotacao_pagamentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cotacao_id INTEGER NOT NULL,
+    descricao TEXT,
+    percentual REAL,
+    gatilho TEXT,
+    dias_apos INTEGER DEFAULT 0,
+    data_fixa TEXT,
+    valor_projetado REAL,
+    data_projetada TEXT,
+    status TEXT DEFAULT 'Projecao',
+data_pagamento TEXT,
     FOREIGN KEY (cotacao_id) REFERENCES cotacoes(id) ON DELETE CASCADE
   )
 `,

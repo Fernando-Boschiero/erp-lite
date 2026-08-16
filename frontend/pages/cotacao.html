@@ -41,8 +41,8 @@
       <form id="form-cotacao">
         <h1>COTAÇÃO</h1>
 
-        <!-- IDENTIFICATION -->
-        <div class="container-numdata">
+        <!-- IDENTIFICAÇÃO DA COTAÇÃO -->
+        <div class="full-container">
           <div class="column">
             <label for="numCotacao">NO. DA COTAÇÃO</label>
             <input
@@ -71,44 +71,42 @@
           </div>
         </div>
 
+        <h2>DADOS DO CLIENTE</h2>
+        <hr class="dados-cliente" />
+        <div class="full-container">
+          <div class="column">
+            <label for="cliente">CLIENTE</label>
+            <input
+              type="text"
+              id="cliente"
+              name="cliente"
+              placeholder="Nome da Empresa" />
+          </div>
+          <div class="column">
+            <label for="clienteContato">CONTATO</label>
+            <input
+              type="text"
+              id="clienteContato"
+              name="cliente_contato"
+              placeholder="Sr. Nome Sobrenome" />
+          </div>
+          <div class="column">
+            <label for="clienteEmail">EMAIL</label>
+            <input
+              type="email"
+              id="clienteEmail"
+              name="cliente_email"
+              placeholder="email@empresa.com" />
+          </div>
+        </div>
+
         <!-- CLIENT INFO -->
         <div class="container-fornecedor-condicoes">
-          <div class="column-fornecedor-condicoes">
-            <h2>DADOS DO CLIENTE</h2>
-            <hr />
-            <div class="input-group">
-              <label for="cliente">CLIENTE</label>
-              <input
-                type="text"
-                id="cliente"
-                name="cliente"
-                placeholder="Nome da Empresa" />
-            </div>
-            <div class="container-multiple-inputs">
-              <div class="input-group">
-                <label for="clienteContato">CONTATO</label>
-                <input
-                  type="text"
-                  id="clienteContato"
-                  name="cliente_contato"
-                  placeholder="Sr. Nome Sobrenome" />
-              </div>
-              <div class="input-group">
-                <label for="clienteEmail">EMAIL</label>
-                <input
-                  type="email"
-                  id="clienteEmail"
-                  name="cliente_email"
-                  placeholder="email@empresa.com" />
-              </div>
-            </div>
-          </div>
-
-          <!-- COMMERCIAL CONDITIONS -->
+          <!-- CONDIÇÕES COMERCIAIS -->
           <div class="column-fornecedor-condicoes">
             <h2>CONDIÇÕES COMERCIAIS</h2>
             <hr />
-            <div class="input-group">
+            <div class="container-multiple-inputs">
               <div class="input-group">
                 <label for="prazoEntrega"
                   >PRAZO DE ENTREGA (dias após aceite)</label
@@ -125,7 +123,7 @@
                 <input type="date" id="dataAceite" name="data_aceite" />
               </div>
             </div>
-            <div class="input-group">
+            <div class="container-multiple-inputs">
               <div class="input-group">
                 <label for="dataPrevistaCotacao"
                   >DATA PREVISTA DE ENTREGA</label
@@ -145,24 +143,80 @@
                   placeholder="Ex: 15 dias" />
               </div>
             </div>
-            <div class="input-group">
-              <div class="input-group">
-                <label for="condPagamento">CONDIÇÃO DE PAGAMENTO</label>
-                <input
-                  type="text"
-                  id="condPagamento"
-                  name="cond_pagamento"
-                  placeholder="Ex: 60% no pedido, 40% na entrega" />
+            <div class="input-group moeda">
+              <label for="moeda">MOEDA</label>
+              <select id="moeda" name="moeda">
+                <option value="BRL">BRL (R$)</option>
+                <option value="USD">USD (U$)</option>
+                <option value="EUR">EUR (€)</option>
+              </select>
+            </div>
+
+            <div class="radio-container">
+              <div class="radio">
+                <label>INSTALAÇÃO</label>
+                <div class="radio-btns">
+                  <label>
+                    <input
+                      type="radio"
+                      id="instalacaoCliente"
+                      name="instalacao"
+                      value="cliente"
+                      checked />
+                    Cliente
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      id="instalacaoVeikon"
+                      name="instalacao"
+                      value="Veikon" />
+                    Veikon
+                  </label>
+                </div>
               </div>
-              <div class="input-group">
-                <label for="moeda">MOEDA</label>
-                <select id="moeda" name="moeda">
-                  <option value="BRL">BRL (R$)</option>
-                  <option value="USD">USD (U$)</option>
-                  <option value="EUR">EUR (€)</option>
-                </select>
+
+              <div class="radio">
+                <label>FRETE</label>
+                <div class="radio-btns">
+                  <label>
+                    <input
+                      type="radio"
+                      id="freteCliente"
+                      name="frete"
+                      value="cliente"
+                      checked />
+                    Cliente
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      id="freteVeikon"
+                      name="frete"
+                      value="Veikon" />
+                    Veikon
+                  </label>
+                </div>
               </div>
             </div>
+
+            <!-- CONDIÇÕES DE PAGAMENTO ESTRUTURADAS -->
+            <h2>CONDIÇÕES DE PAGAMENTO</h2>
+            <hr />
+            <div id="secao-pagamentos">
+              <div id="lista-parcelas"></div>
+              <button type="button" id="btn-adicionar-parcela" class="no-print">
+                + Adicionar Parcela
+              </button>
+              <div
+                id="pagamento-preview"
+                style="margin-top: 12px; font-style: italic; color: #555"></div>
+              <div id="pagamento-total" style="margin-top: 4px"></div>
+            </div>
+
+            <!-- manter campo cond_pagamento oculto para compatibilidade -->
+            <input type="hidden" id="condPagamento" />
+
             <div class="total_geral">
               <span>TOTAL GERAL</span>
               <span id="total-geral">R$ -</span>
@@ -199,6 +253,7 @@
               <th>DESCRIÇÃO</th>
               <th>UNID.</th>
               <th>VALOR UNIT.</th>
+              <th>IPI (%)</th>
               <th>TOTAL</th>
             </tr>
           </thead>
@@ -210,6 +265,7 @@
               <td contenteditable="true"></td>
               <td contenteditable="true"></td>
               <td contenteditable="true" class="val-unitario"></td>
+              <td contenteditable="true" class="ipi"></td>
               <td class="total-linha"></td>
             </tr>
           </tbody>
@@ -301,6 +357,39 @@
         <h2>CONDIÇÕES GERAIS DE VENDA</h2>
         <hr />
         <div id="editor-condicoes-gerais" class="quill-editor"></div>
+
+        <!-- ARQUIVOS -->
+        <div class="section no-print" id="secao-arquivos" style="display: none">
+          <hr class="hr-arquivos" />
+          <h2>ARQUIVOS</h2>
+          <p>(Arquivos anexados para uso interno e registro histórico)</p>
+          <p>
+            📁 Os arquivos enviados ficam armazenados na seguinte pasta do
+            servidor:
+            <code>D:\erp-project\frontend\uploads\cotacoes\</code>
+          </p>
+          <hr />
+          <div class="input-group">
+            <label for="fileInputCotacao">SELECIONAR ARQUIVOS</label>
+            <input
+              type="file"
+              id="fileInputCotacao"
+              multiple
+              style="
+                font-size: 1rem;
+                padding: 8px 12px;
+                width: 400px;
+                cursor: pointer;
+              " />
+            <button
+              type="button"
+              id="btn-upload-arquivos-cotacao"
+              style="margin-top: 8px">
+              FAZER UPLOAD
+            </button>
+          </div>
+          <div id="lista-arquivos-cotacao" style="margin-top: 16px"></div>
+        </div>
 
         <!-- FORM ACTIONS -->
         <div class="form-actions no-print">

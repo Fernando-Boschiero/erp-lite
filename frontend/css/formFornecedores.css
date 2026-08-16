@@ -114,10 +114,10 @@ form select {
   font-size: var(--font-size-base);
 }
 
-.container-numdata {
+.full-container {
   display: flex;
   justify-content: center;
-  gap: 25px;
+  gap: 10px;
   margin-top: 5mm;
   width: 100%;
   flex: 1;
@@ -153,6 +153,17 @@ form select {
   width: 90%;
 }
 
+.dados-cliente {
+  border: none;
+  border-top: 1px solid var(--color-primary);
+  margin: 5mm 0;
+  width: 90%;
+}
+
+.moeda {
+  width: 50%;
+}
+
 .container-fornecedor-condicoes > .column-fornecedor-condicoes {
   flex: 1;
 }
@@ -160,7 +171,7 @@ form select {
 .container-fornecedor-condicoes {
   display: flex;
   gap: 25px;
-  margin-top: 10mm;
+  margin-top: 5mm;
   width: 100%;
 }
 
@@ -187,12 +198,47 @@ form select {
   min-width: 0;
 }
 
+.radio-container {
+  display: flex;
+  justify-content: left;
+  gap: 90px;
+  margin-top: 5mm;
+  width: 100%;
+}
+
+.radio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radio > label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #333;
+  margin-top: 8px;
+}
+
+.radio-btns {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.radio-btns label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
 .container-multiple-inputs > .div-estado {
   flex: 0.4;
 }
 
 .total_geral {
-  margin-top: 2mm;
+  margin: 5mm 0 5mm auto;
   color: var(--color-primary);
   border: 0.2mm solid var(--color-primary);
   background-color: var(--color-secondary);
@@ -201,6 +247,7 @@ form select {
   display: flex;
   justify-content: space-around;
   align-items: center;
+  width: 50%;
 }
 
 /* CSS FOR THE TABLE */

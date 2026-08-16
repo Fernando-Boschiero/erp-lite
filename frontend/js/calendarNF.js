@@ -3,6 +3,8 @@ let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 let duplicatasDoMes = [];
 let tooltipDupId = null;
+let projecoesDoMes = [];
+let tooltipIsProjecao = false;
 
 /* ─── ELEMENTS ─── */
 const calendarGrid = document.getElementById("calendar-grid");
@@ -19,11 +21,19 @@ const filterSaidas = document.getElementById("filter-saidas");
 
 /* ─── FETCH DUPLICATAS ─── */
 async function carregarDuplicatas() {
-  const res = await fetch(
-    `http://localhost:3000/duplicatas/calendario/${currentYear}/${currentMonth}`,
-  );
-  duplicatasDoMes = await res.json();
-  renderCalendar();
+  try {
+    const [resDups, resProjecoes] = await Promise.all([
+      fetch(
+        `http://localhost:3000/duplicatas/calendario/${currentYear}/${currentMonth}`,
+      ),
+      fetch(`http://localhost:3000/relatorios/projecoes-cotacoes`),
+    ]);
+    duplicatasDoMes = await resDups.json();
+    projecoesDoMes = await resProjecoes.json();
+    renderCalendar();
+  } catch (err) {
+    console.error("Erro ao carregar calendário:", err);
+  }
 }
 
 /* ─── RENDER CALENDAR ─── */
@@ -69,9 +79,9 @@ function renderCalendar() {
     calendarGrid.appendChild(empty);
   }
 
-  // filter duplicatas
-  const showAbertas = filterAbertas.checked;
-  const showPagas = filterPagas.checked;
+  // filter duplicatas — declared BEFORE the loop
+  const showAbertas = filterAbertas ? filterAbertas.checked : true;
+  const showPagas = filterPagas ? filterPagas.checked : false;
   const showSaidas = filterSaidas ? filterSaidas.checked : true;
 
   // day cells
@@ -104,7 +114,7 @@ function renderCalendar() {
 
       const isSaida = dup.direcao === "Saída";
       const isPaga = dup.status === "Paga";
-      const isVencida = !isPaga && dataCell < hoje;
+      const isVencida = dup.status === "Aberta" && dataCell < hoje;
 
       const entry = document.createElement("div");
       entry.className = `dup-entry ${
@@ -120,21 +130,61 @@ function renderCalendar() {
       }`;
 
       const arrow = dup.direcao === "Saída" ? "↑" : "↓";
-
       entry.textContent =
         arrow +
         " NF " +
         (dup.nNF.startsWith("MANUAL-") ? "Manual - " + dup.xNome : dup.nNF);
       entry.dataset.dupId = dup.id;
 
-      // hover — show tooltip
       entry.addEventListener("mouseenter", (e) => {
         showTooltip(dup, e);
       });
 
-      // click — open edit page in new tab
       entry.addEventListener("click", () => {
         window.open(`../pages/editarNF.html?id=${dup.nf_id}`, "_blank");
+      });
+
+      cell.appendChild(entry);
+    });
+
+    // projeções de cotações
+    const projecoesDia = projecoesDoMes.filter(
+      (p) => p.data_projetada === diaStr,
+    );
+    projecoesDia.forEach((proj) => {
+      const isPaga = proj.status === "Paga";
+
+      if (isPaga && !showPagas) return;
+      if (!isPaga && !showAbertas) return;
+
+      const entry = document.createElement("div");
+      entry.className = `dup-entry ${isPaga ? "projecao paga" : "projecao"}`;
+      entry.textContent = `↑ COT ${proj.num_cotacao} (${isPaga ? "paga" : "projeção"})`;
+
+      entry.addEventListener("mouseenter", (e) => {
+        showTooltip(
+          {
+            nNF: `COT ${proj.num_cotacao}`,
+            xNome: proj.cliente,
+            nDup: proj.descricao,
+            vDup: proj.valor_projetado || 0,
+            status: isPaga ? "Paga" : "Projeção",
+            data_pagamento: proj.data_pagamento,
+            direcao: "Saída",
+            nf_id: null,
+            projecao_id: proj.id,
+            is_projecao: true,
+          },
+          e,
+        );
+        if (tooltipPagar)
+          tooltipPagar.style.display = isPaga ? "none" : "block";
+        if (tooltipReabrir)
+          tooltipReabrir.style.display = isPaga ? "block" : "none";
+      });
+
+      entry.addEventListener("click", () => {
+        window.open(`../pages/cotacao.html?id=${proj.cotacao_id}`, "_blank");
       });
 
       cell.appendChild(entry);
@@ -146,24 +196,31 @@ function renderCalendar() {
 
 /* ─── TOOLTIP ─── */
 function showTooltip(dup, e) {
-  tooltipDupId = dup.id;
+  tooltipDupId = dup.projecao_id || dup.id;
+  tooltipIsProjecao = dup.is_projecao || false;
 
   const isVencida =
     dup.status === "Aberta" && new Date(dup.dVenc + "T00:00:00") < new Date();
   const statusColor =
-    dup.status === "Paga" ? "#198754" : isVencida ? "#dc3545" : "#856404";
+    dup.status === "Paga"
+      ? "#198754"
+      : dup.status === "Projeção"
+        ? "#1a5c35"
+        : isVencida
+          ? "#dc3545"
+          : "#856404";
 
   tooltipContent.innerHTML = `
   <div class="tooltip-row">
-    <span class="tooltip-label">NF</span>
-    <span class="tooltip-value">${dup.nNF.startsWith("MANUAL-") ? "Manual - " + dup.xNome : dup.nNF}</span>
+    <span class="tooltip-label">${tooltipIsProjecao ? "Cotação" : "NF"}</span>
+    <span class="tooltip-value">${tooltipIsProjecao ? dup.nNF : dup.nNF.startsWith("MANUAL-") ? "Manual - " + dup.xNome : dup.nNF}</span>
   </div>
   <div class="tooltip-row">
-    <span class="tooltip-label">Fornecedor</span>
+    <span class="tooltip-label">${tooltipIsProjecao ? "Cliente" : "Fornecedor"}</span>
     <span class="tooltip-value">${dup.xNome}</span>
   </div>
   <div class="tooltip-row">
-    <span class="tooltip-label">Duplicata</span>
+    <span class="tooltip-label">${tooltipIsProjecao ? "Parcela" : "Duplicata"}</span>
     <span class="tooltip-value">${dup.nDup}</span>
   </div>
   <div class="tooltip-row">
@@ -184,7 +241,7 @@ function showTooltip(dup, e) {
       : ""
   }
   ${
-    dup.status === "Aberta"
+    dup.status === "Aberta" || dup.status === "Projeção"
       ? `
   <div class="tooltip-row" style="margin-top: 8px;">
     <span class="tooltip-label">Data pagamento</span>
@@ -194,10 +251,10 @@ function showTooltip(dup, e) {
   </div>`
       : ""
   }
-`;
+  `;
 
   // show appropriate action button
-  if (dup.status === "Aberta") {
+  if (dup.status === "Aberta" || dup.status === "Projeção") {
     tooltipPagar.style.display = "block";
     tooltipReabrir.style.display = "none";
   } else {
@@ -205,7 +262,7 @@ function showTooltip(dup, e) {
     tooltipReabrir.style.display = "block";
   }
 
-  // position tooltip near cursor
+  // position tooltip
   tooltip.style.display = "block";
   const x = Math.min(e.clientX + 10, window.innerWidth - 320);
   const y = Math.min(e.clientY + 10, window.innerHeight - 200);
@@ -222,19 +279,21 @@ function hideTooltip() {
 if (tooltipPagar) {
   tooltipPagar.addEventListener("click", async () => {
     if (!tooltipDupId) return;
-    const dateInput = document.getElementById("tooltip-data-pagamento");
-    const dataPagamento = dateInput
-      ? dateInput.value
-      : new Date().toISOString().split("T")[0];
+    const hoje = new Date().toISOString().split("T")[0];
 
-    const result = await fetch(
-      `http://localhost:3000/duplicatas/${tooltipDupId}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Paga", data_pagamento: dataPagamento }),
-      },
-    );
+    const url = tooltipIsProjecao
+      ? `http://localhost:3000/cotacoes/pagamentos/${tooltipDupId}/status`
+      : `http://localhost:3000/duplicatas/${tooltipDupId}/status`;
+
+    const body = tooltipIsProjecao
+      ? { status: "Paga", data_pagamento: hoje }
+      : { status: "Paga", data_pagamento: hoje };
+
+    const result = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     const data = await result.json();
     if (!result.ok) {
       alert(data.error);
@@ -248,14 +307,19 @@ if (tooltipPagar) {
 if (tooltipReabrir) {
   tooltipReabrir.addEventListener("click", async () => {
     if (!tooltipDupId) return;
-    const result = await fetch(
-      `http://localhost:3000/duplicatas/${tooltipDupId}/status`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Aberta", data_pagamento: null }),
-      },
-    );
+
+    const url = tooltipIsProjecao
+      ? `http://localhost:3000/cotacoes/pagamentos/${tooltipDupId}/status`
+      : `http://localhost:3000/duplicatas/${tooltipDupId}/status`;
+
+    const result = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: tooltipIsProjecao ? "Projecao" : "Aberta",
+        data_pagamento: null,
+      }),
+    });
     const data = await result.json();
     if (!result.ok) {
       alert(data.error);
@@ -304,6 +368,5 @@ if (filterPagas) filterPagas.addEventListener("change", renderCalendar);
 if (filterSaidas) filterSaidas.addEventListener("change", renderCalendar);
 
 /* ─── INIT ─── */
-document.addEventListener("DOMContentLoaded", () => {
-  carregarDuplicatas();
-});
+console.log("calendarNF.js loaded, calling carregarDuplicatas");
+carregarDuplicatas();

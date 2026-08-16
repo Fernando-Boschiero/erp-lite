@@ -139,6 +139,20 @@
   border-left: 3px solid #0d6efd;
 }
 
+.dup-entry.projecao {
+  background: #f0fff4;
+  color: #1a5c35;
+  border-left: 3px dashed #1a5c35;
+  opacity: 0.8;
+}
+
+.dup-entry.projecao.paga {
+  background: #d1e7dd;
+  color: #0a3622;
+  border-left: 3px solid #198754;
+  opacity: 0.8;
+}
+
 /* Tooltip */
 .dup-tooltip {
   position: fixed;

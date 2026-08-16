@@ -160,14 +160,15 @@ async function carregarFluxo() {
     const tr = document.createElement("tr");
     tr.style.background = i % 2 === 0 ? "#f8f9fa" : "white";
     tr.innerHTML = `
-      <td class="td-relatorio"><strong>${formatMes(m.mes)}</strong></td>
-      <td class="td-relatorio positive">${formatBRL(m.entradasPagas)}</td>
-      <td class="td-relatorio">${formatBRL(m.entradasAbertas)}</td>
-      <td class="td-relatorio negative">${formatBRL(m.saidasPagas)}</td>
-      <td class="td-relatorio">${formatBRL(m.saidasAbertas)}</td>
-      <td class="td-relatorio ${m.saldoMes >= 0 ? "positive" : "negative"}">${formatBRL(m.saldoMes)}</td>
-      <td class="td-relatorio ${m.saldoAcumulado >= 0 ? "positive" : "negative"}">${formatBRL(m.saldoAcumulado)}</td>
-    `;
+  <td class="td-relatorio"><strong>${formatMes(m.mes)}</strong></td>
+  <td class="td-relatorio positive">${formatBRL(m.entradasPagas)}</td>
+  <td class="td-relatorio">${formatBRL(m.entradasAbertas)}</td>
+  <td class="td-relatorio" style="color:#1a5c35; font-style:italic;">${formatBRL(m.entradasProjetadas)}</td>
+  <td class="td-relatorio negative">${formatBRL(m.saidasPagas)}</td>
+  <td class="td-relatorio">${formatBRL(m.saidasAbertas)}</td>
+  <td class="td-relatorio ${m.saldoMes >= 0 ? "positive" : "negative"}">${formatBRL(m.saldoMes)}</td>
+  <td class="td-relatorio ${m.saldoAcumulado >= 0 ? "positive" : "negative"}">${formatBRL(m.saldoAcumulado)}</td>
+`;
     tbody.appendChild(tr);
   });
 }

@@ -122,6 +122,266 @@ const condicoesGeraisBoilerplate = `
 
 quillCondicoesGerais.root.innerHTML = condicoesGeraisBoilerplate;
 
+/* ─── CONDIÇÕES DE PAGAMENTO ─── */
+let parcelas = [];
+
+const listaParcelas = document.getElementById("lista-parcelas");
+const btnAdicionarParcela = document.getElementById("btn-adicionar-parcela");
+const pagamentoPreview = document.getElementById("pagamento-preview");
+const pagamentoTotal = document.getElementById("pagamento-total");
+
+const tiposParcela = ["Entrada", "Parcela", "Entrega", "Faturamento"];
+const tiposGatilho = ["aceite", "entrega", "data_fixa", "faturamento"];
+
+function calcularDataProjetada(
+  gatilho,
+  diasApos,
+  dataFixa,
+  dataAceite,
+  dataPrevista,
+) {
+  if (gatilho === "data_fixa" && dataFixa) return dataFixa;
+
+  let dataBase = null;
+  if (gatilho === "aceite" && dataAceite) {
+    dataBase = new Date(dataAceite);
+  } else if (
+    (gatilho === "entrega" || gatilho === "faturamento") &&
+    dataPrevista
+  ) {
+    // parse dd/mm/yyyy
+    const [d, m, y] = dataPrevista.split("/");
+    dataBase = new Date(`${y}-${m}-${d}T00:00:00`);
+  }
+
+  if (!dataBase) return null;
+  dataBase.setDate(dataBase.getDate() + (diasApos || 0));
+  return dataBase.toISOString().split("T")[0];
+}
+
+function calcularValorProjetado(percentual, totalGeral) {
+  return (parseFloat(percentual) / 100) * totalGeral;
+}
+
+function renderParcelas() {
+  if (!listaParcelas) return;
+  listaParcelas.innerHTML = "";
+
+  const totalGeral = parseBR(
+    document.getElementById("total-geral")?.textContent || "0",
+  );
+  const dataAceite = document.getElementById("dataAceite")?.value || null;
+  const dataPrevista =
+    document.getElementById("dataPrevistaCotacao")?.value || null;
+  const isFaturada = document.getElementById("status")?.value === "Faturada";
+
+  let totalPercentual = 0;
+
+  parcelas.forEach((p, i) => {
+    totalPercentual += parseFloat(p.percentual) || 0;
+
+    const dataProjetada = calcularDataProjetada(
+      p.gatilho,
+      p.dias_apos,
+      p.data_fixa,
+      dataAceite,
+      dataPrevista,
+    );
+    const valorProjetado = calcularValorProjetado(p.percentual, totalGeral);
+
+    parcelas[i].data_projetada = dataProjetada;
+    parcelas[i].valor_projetado = valorProjetado;
+
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;";
+    div.innerHTML = `
+      <select class="parcela-descricao" data-index="${i}" ${isFaturada ? "disabled" : ""}>
+        ${tiposParcela.map((t) => `<option value="${t}" ${p.descricao === t ? "selected" : ""}>${t}</option>`).join("")}
+      </select>
+      <input type="number" class="parcela-percentual" data-index="${i}"
+        value="${p.percentual}" min="0" max="100" step="0.01"
+        placeholder="%" style="width:70px;" ${isFaturada ? "disabled" : ""} />
+      <span>% no</span>
+      <select class="parcela-gatilho" data-index="${i}" ${isFaturada ? "disabled" : ""}>
+        <option value="aceite" ${p.gatilho === "aceite" ? "selected" : ""}>Aceite</option>
+        <option value="entrega" ${p.gatilho === "entrega" ? "selected" : ""}>Entrega</option>
+        <option value="data_fixa" ${p.gatilho === "data_fixa" ? "selected" : ""}>Data Fixa</option>
+        <option value="faturamento" ${p.gatilho === "faturamento" ? "selected" : ""}>Faturamento</option>
+      </select>
+      ${
+        p.gatilho !== "data_fixa"
+          ? `
+        <span>+</span>
+        <input type="number" class="parcela-dias" data-index="${i}"
+          value="${p.dias_apos || 0}" min="0" placeholder="dias"
+          style="width:70px;" ${isFaturada ? "disabled" : ""}/>
+        <span>dias</span>
+      `
+          : ""
+      }
+      ${
+        p.gatilho === "data_fixa"
+          ? `
+        <input type="date" class="parcela-data-fixa" data-index="${i}"
+          value="${p.data_fixa || ""}" ${isFaturada ? "disabled" : ""}/>
+      `
+          : ""
+      }
+      <span style="color:#6c757d; font-size:0.85em;">
+        ${dataProjetada ? `→ ${new Date(dataProjetada + "T00:00:00").toLocaleDateString("pt-BR")}` : "→ data não calculada"}
+        ${valorProjetado ? `| ${valorProjetado.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}` : ""}
+      </span>
+      ${
+        !isFaturada
+          ? `
+        <button type="button" class="btn-remover-parcela" data-index="${i}"
+          style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+      `
+          : ""
+      }
+    `;
+    listaParcelas.appendChild(div);
+  });
+
+  // ─── THESE BLOCKS MUST BE OUTSIDE THE FOREACH ───
+
+  // update total indicator
+  if (pagamentoTotal) {
+    const isComplete = Math.abs(totalPercentual - 100) < 0.01;
+    pagamentoTotal.innerHTML = `
+      <span style="color: ${isComplete ? "#198754" : "#dc3545"}; font-weight: bold;">
+        Total: ${totalPercentual.toFixed(2)}% ${isComplete ? "✅" : "⚠️ (deve ser 100%)"}
+      </span>
+    `;
+  }
+
+  // update preview
+  if (pagamentoPreview) {
+    const totalGeral2 = parseBR(
+      document.getElementById("total-geral")?.textContent || "0",
+    );
+    pagamentoPreview.textContent =
+      parcelas.length > 0
+        ? parcelas
+            .map((p) => {
+              const valor =
+                ((parseFloat(p.percentual) || 0) / 100) * totalGeral2;
+              const valorStr =
+                valor > 0
+                  ? ` = ${valor.toLocaleString("pt-BR", { style: "currency", currency: getMoeda() })}`
+                  : "";
+
+              let gatilhoStr = "";
+              if (p.gatilho !== "data_fixa") {
+                gatilhoStr = ` (${p.gatilho}${p.dias_apos > 0 ? ` +${p.dias_apos}d` : ""})`;
+              }
+
+              const dataProjetada = calcularDataProjetada(
+                p.gatilho,
+                p.dias_apos,
+                p.data_fixa,
+                dataAceite,
+                dataPrevista,
+              );
+              const dataStr = dataProjetada
+                ? ` → ${new Date(dataProjetada + "T00:00:00").toLocaleDateString("pt-BR")}`
+                : "";
+
+              return `${p.percentual}% ${p.descricao.toLowerCase()}${valorStr}${gatilhoStr}${dataStr}`;
+            })
+            .join(" + ")
+        : "Nenhuma parcela configurada";
+  }
+
+  // update hidden field for backward compatibility
+  const condPagamento = document.getElementById("condPagamento");
+  if (condPagamento) {
+    condPagamento.value = pagamentoPreview?.textContent || "";
+  }
+
+  // attach event listeners
+  listaParcelas.querySelectorAll(".parcela-descricao").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      parcelas[e.target.dataset.index].descricao = e.target.value;
+      renderParcelas();
+    });
+  });
+
+  listaParcelas.querySelectorAll(".parcela-percentual").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      parcelas[e.target.dataset.index].percentual =
+        parseFloat(e.target.value) || 0;
+      renderParcelas();
+    });
+  });
+
+  listaParcelas.querySelectorAll(".parcela-gatilho").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      parcelas[e.target.dataset.index].gatilho = e.target.value;
+      renderParcelas();
+    });
+  });
+
+  listaParcelas.querySelectorAll(".parcela-dias").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      parcelas[e.target.dataset.index].dias_apos =
+        parseInt(e.target.value) || 0;
+      renderParcelas();
+    });
+  });
+
+  listaParcelas.querySelectorAll(".parcela-data-fixa").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      parcelas[e.target.dataset.index].data_fixa = e.target.value;
+      renderParcelas();
+    });
+  });
+
+  listaParcelas.querySelectorAll(".btn-remover-parcela").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      parcelas.splice(parseInt(e.target.dataset.index), 1);
+      renderParcelas();
+    });
+  });
+}
+
+if (btnAdicionarParcela) {
+  btnAdicionarParcela.addEventListener("click", () => {
+    parcelas.push({
+      descricao: "Parcela",
+      percentual: 0,
+      gatilho: "aceite",
+      dias_apos: 30,
+      data_fixa: null,
+      valor_projetado: null,
+      data_projetada: null,
+    });
+    renderParcelas();
+  });
+}
+
+async function carregarPagamentos(cotacaoId) {
+  const res = await fetch(
+    `http://localhost:3000/cotacoes/${cotacaoId}/pagamentos`,
+  );
+  parcelas = await res.json();
+  renderParcelas();
+}
+
+async function salvarPagamentos(cotacaoId) {
+  const result = await fetch(
+    `http://localhost:3000/cotacoes/${cotacaoId}/pagamentos`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pagamentos: parcelas }),
+    },
+  );
+  const data = await result.json();
+  if (!result.ok) console.error("Erro ao salvar pagamentos:", data.error);
+}
+
 /* ─── TABLE - line items ─── */
 const tableBody = document.querySelector("#itens-table tbody");
 const addRowBtn = document.getElementById("add-row");
@@ -165,13 +425,16 @@ function getMoeda() {
 const calcRow = (row) => {
   const qntText = row.querySelector(".quantidade")?.textContent || "0";
   const valText = row.querySelector(".val-unitario")?.textContent || "0";
+  const ipiText = row.querySelector(".ipi")?.textContent || "0";
 
   const qnt = parseBR(qntText);
   const valUnit = parseBR(valText);
+  const ipi = parseBR(ipiText);
 
-  const total = qnt * valUnit;
+  const base = qnt * valUnit;
+  const total = base * (1 + ipi / 100);
 
-  const cellTotal = row.cells[6]; // no IPI column, so total is cells[6] not cells[7]
+  const cellTotal = row.cells[7]; // updated from 6 to 7 due to new IPI column
   if (cellTotal) {
     cellTotal.textContent = total.toLocaleString("pt-BR", {
       style: "currency",
@@ -202,6 +465,14 @@ if (tableBody) {
         e.target.textContent,
         0,
         "1",
+      ).toLocaleString("pt-BR");
+    }
+    if (e.target.classList.contains("ipi")) {
+      console.log("IPI focusout:", e.target.textContent);
+      e.target.textContent = applyNumFormatting(
+        e.target.textContent,
+        0,
+        "0",
       ).toLocaleString("pt-BR");
     }
     if (e.target.classList.contains("val-unitario")) {
@@ -258,6 +529,7 @@ if (addRowBtn) {
       <td contenteditable="true"></td>
       <td contenteditable="true"></td>
       <td contenteditable="true" class="val-unitario"></td>
+      <td contenteditable="true" class="ipi"></td>
       <td></td>
     `;
     tableBody.appendChild(newRow);
@@ -279,11 +551,36 @@ if (deleteRowBtn) {
 function getItensFromTable() {
   return Array.from(tableBody.rows).map((row, index) => ({
     item: index + 1,
-    quantidade: parseBR(row.cells[2]?.textContent || "0"),
+    quantidade:
+      parseFloat(
+        (row.cells[2]?.textContent || "0")
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\./g, "")
+          .replace(",", "."),
+      ) || 0,
     descricao: row.cells[3]?.textContent || "",
     unidade: row.cells[4]?.textContent || "",
-    val_unitario: parseBR(row.cells[5]?.textContent || "0"),
-    total: parseBR(row.cells[6]?.textContent || "0"),
+    val_unitario:
+      parseFloat(
+        (row.cells[5]?.textContent || "0")
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\./g, "")
+          .replace(",", "."),
+      ) || 0,
+    ipi:
+      parseFloat(
+        (row.cells[6]?.textContent || "0")
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\./g, "")
+          .replace(",", "."),
+      ) || 0,
+    total:
+      parseFloat(
+        (row.cells[7]?.textContent || "0")
+          .replace(/[^\d,.-]/g, "")
+          .replace(/\./g, "")
+          .replace(",", "."),
+      ) || 0,
   }));
 }
 
@@ -294,20 +591,12 @@ function populateItensTable(itens) {
     tr.innerHTML = `
       <td><input type="checkbox" class="row-select"></td>
       <td>${index + 1}</td>
-      <td contenteditable="true" class="quantidade">${item.quantidade}</td>
+      <td contenteditable="true" class="quantidade">${item.quantidade != null ? String(item.quantidade).replace(".", ",") : ""}</td>
       <td contenteditable="true">${item.descricao}</td>
       <td contenteditable="true">${item.unidade}</td>
-      <td contenteditable="true" class="val-unitario">${item.val_unitario?.toLocaleString(
-        "pt-BR",
-        {
-          style: "currency",
-          currency: getMoeda(),
-        },
-      )}</td>
-      <td>${item.total?.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: getMoeda(),
-      })}</td>
+      <td contenteditable="true" class="val-unitario">${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: getMoeda() })}</td>
+      <td contenteditable="true" class="ipi">${item.ipi != null ? String(item.ipi).replace(".", ",") : ""}</td>
+      <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: getMoeda() })}</td>
     `;
     tableBody.appendChild(tr);
   });
@@ -393,6 +682,11 @@ function buildPayload() {
     alterado_por: document.getElementById("alteradoPor")?.value || "",
     observacao_status: document.getElementById("observacaoStatus")?.value || "",
     itens: getItensFromTable(),
+    instalacao:
+      document.querySelector('input[name="instalacao"]:checked')?.value ||
+      "cliente",
+    frete:
+      document.querySelector('input[name="frete"]:checked')?.value || "cliente",
   };
 }
 
@@ -410,8 +704,9 @@ function atualizarOpcoesStatus(statusAtual) {
       "Cancelada",
     ],
     "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
-    Aceita: ["Pausada", "Cancelada"],
+    Aceita: ["Faturada", "Pausada", "Cancelada"],
     Pausada: ["Aceita", "Cancelada"],
+    Faturada: [],
     Recusada: [],
     Cancelada: [],
   };
@@ -454,13 +749,11 @@ if (btnSalvar) {
     const statusNovo = document.getElementById("statusSelect").value;
     const statusMudou = statusNovo !== statusAtual;
 
-    // require alterado_por if status changed
     if (statusMudou && !payload.alterado_por) {
       alert("Por favor, informe quem está alterando o status.");
       return;
     }
 
-    // require observacao if moving to Pausada, Cancelada or Recusada
     if (
       statusMudou &&
       ["Pausada", "Cancelada", "Recusada"].includes(statusNovo) &&
@@ -492,13 +785,16 @@ if (btnSalvar) {
       if (!result.ok) {
         alert(data.error);
       } else {
-        // update the readonly status display
+        await salvarPagamentos(currentCotacaoId); // ← add here for PUT
         document.getElementById("status").value = statusNovo;
         atualizarOpcoesStatus(statusNovo);
         setReadOnly(false);
 
-        // apply correct read-only state based on new status
-        if (["Enviado ao Cliente", "Aceita", "Pausada"].includes(statusNovo)) {
+        if (
+          ["Enviado ao Cliente", "Aceita", "Pausada", "Faturada"].includes(
+            statusNovo,
+          )
+        ) {
           setReadOnly(true);
         }
         if (statusNovo === "Enviado ao Cliente") {
@@ -506,7 +802,7 @@ if (btnSalvar) {
         } else {
           if (btnNovaRevisao) btnNovaRevisao.style.display = "none";
         }
-        if (["Recusada", "Cancelada"].includes(statusNovo)) {
+        if (["Recusada", "Cancelada", "Faturada"].includes(statusNovo)) {
           if (btnSalvar) btnSalvar.style.display = "none";
         }
         alert("Cotação salva com sucesso!");
@@ -522,6 +818,7 @@ if (btnSalvar) {
         alert(data.error);
       } else {
         currentCotacaoId = data.id;
+        await salvarPagamentos(currentCotacaoId); // ← add here for POST
         alert("Cotação salva com sucesso!");
       }
     }
@@ -558,6 +855,95 @@ if (btnNovaRevisao) {
   });
 }
 
+/* ─── ARQUIVOS ─── */
+const secaoArquivosCotacao = document.getElementById("secao-arquivos");
+const fileInputCotacao = document.getElementById("fileInputCotacao");
+const btnUploadArquivosCotacao = document.getElementById(
+  "btn-upload-arquivos-cotacao",
+);
+const listaArquivosCotacao = document.getElementById("lista-arquivos-cotacao");
+
+async function carregarArquivosCotacao() {
+  if (!cotacaoIdFromUrl) return;
+
+  const res = await fetch(
+    `http://localhost:3000/cotacoes/${encodeURIComponent(numCotacao.value)}/arquivos`,
+  );
+  const arquivos = await res.json();
+
+  listaArquivosCotacao.innerHTML = "";
+
+  if (arquivos.length === 0) {
+    listaArquivosCotacao.innerHTML = `<p>Nenhum arquivo anexado.</p>`;
+    return;
+  }
+
+  arquivos.forEach((arq) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px;";
+    div.innerHTML = `
+      <span style="flex:1;">📄 ${arq.nome}</span>
+      <a href="${arq.url}" target="_blank"
+        style="color:#0d6efd; text-decoration:none;">⬇️ Download</a>
+      <button type="button" class="btn-deletar-arquivo-cotacao"
+        data-filename="${arq.arquivo}"
+        data-numcotacao="${numCotacao.value}"
+        style="background:none; border:none; cursor:pointer;">🗑️</button>
+    `;
+    listaArquivosCotacao.appendChild(div);
+  });
+
+  listaArquivosCotacao
+    .querySelectorAll(".btn-deletar-arquivo-cotacao")
+    .forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Tem certeza que deseja excluir este arquivo?")) return;
+        const result = await fetch(
+          `http://localhost:3000/cotacoes/${encodeURIComponent(btn.dataset.numcotacao)}/arquivos/${btn.dataset.filename}`,
+          { method: "DELETE" },
+        );
+        const data = await result.json();
+        if (!result.ok) {
+          alert(data.error);
+        } else {
+          await carregarArquivosCotacao();
+        }
+      });
+    });
+}
+
+if (btnUploadArquivosCotacao) {
+  btnUploadArquivosCotacao.addEventListener("click", async () => {
+    if (!cotacaoIdFromUrl) {
+      alert("Salve a cotação antes de anexar arquivos.");
+      return;
+    }
+    if (!fileInputCotacao.files || fileInputCotacao.files.length === 0) {
+      alert("Por favor, selecione ao menos um arquivo.");
+      return;
+    }
+
+    const formData = new FormData();
+    for (const file of fileInputCotacao.files) {
+      formData.append("arquivos", file);
+    }
+
+    const result = await fetch(
+      `http://localhost:3000/cotacoes/${encodeURIComponent(numCotacao.value)}/arquivos`,
+      { method: "POST", body: formData },
+    );
+
+    const data = await result.json();
+    if (!result.ok) {
+      alert(data.error);
+    } else {
+      fileInputCotacao.value = "";
+      await carregarArquivosCotacao();
+    }
+  });
+}
+
 /* ─── LOAD EXISTING COTAÇÃO ─── */
 async function carregarCotacao(id) {
   const res = await fetch(`http://localhost:3000/cotacoes/${id}`);
@@ -578,6 +964,19 @@ async function carregarCotacao(id) {
   document.getElementById("validadeProposta").value =
     cotacao.validade_proposta || "";
   document.getElementById("condPagamento").value = cotacao.cond_pagamento || "";
+  // set radio buttons
+  const instalacaoValue = cotacao.instalacao || "cliente";
+  const freteValue = cotacao.frete || "cliente";
+
+  const instalacaoRadio = document.querySelector(
+    `input[name="instalacao"][value="${instalacaoValue}"]`,
+  );
+  const freteRadio = document.querySelector(
+    `input[name="frete"][value="${freteValue}"]`,
+  );
+
+  if (instalacaoRadio) instalacaoRadio.checked = true;
+  if (freteRadio) freteRadio.checked = true;
   document.getElementById("moeda").value = cotacao.moeda || "BRL";
   document.getElementById("objetivo").value = cotacao.objetivo || "";
   document.getElementById("statusSelect").value = cotacao.status;
@@ -617,6 +1016,10 @@ async function carregarCotacao(id) {
   }
 
   atualizarOpcoesStatus(statusAtual);
+
+  if (secaoArquivosCotacao) secaoArquivosCotacao.style.display = "block";
+  await carregarArquivosCotacao();
+  await carregarPagamentos(id);
 }
 
 /* ─── ON LOAD ─── */

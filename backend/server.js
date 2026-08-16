@@ -248,6 +248,8 @@ app.post("/cotacoes", (req, res) => {
     data_prevista,
     cond_pagamento,
     validade_proposta,
+    instalacao,
+    frete,
     moeda,
     condicoes_gerais,
     comprador,
@@ -264,12 +266,13 @@ app.post("/cotacoes", (req, res) => {
         .prepare(
           `
   INSERT INTO cotacoes (
-    num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
-    objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
-    prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
-    condicoes_gerais, comprador, comprador_email, comprador_telefone,
-    status, revisao
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
+  num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
+  objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
+  prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
+  condicoes_gerais, comprador, comprador_email, comprador_telefone,
+  instalacao, frete,
+  status, revisao
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
 `,
         )
         .run(
@@ -292,6 +295,8 @@ app.post("/cotacoes", (req, res) => {
           comprador,
           comprador_email,
           comprador_telefone,
+          instalacao || "cliente",
+          frete || "cliente",
         );
 
       const cotacaoId = result.lastInsertRowid;
@@ -300,9 +305,9 @@ app.post("/cotacoes", (req, res) => {
       for (const item of itens) {
         db.prepare(
           `
-          INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, total)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `,
+    INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `,
         ).run(
           cotacaoId,
           item.item,
@@ -310,6 +315,7 @@ app.post("/cotacoes", (req, res) => {
           item.descricao,
           item.unidade,
           item.val_unitario,
+          item.ipi || 0,
           item.total,
         );
       }
@@ -353,6 +359,8 @@ app.put("/cotacoes/:id", (req, res) => {
     data_prevista,
     cond_pagamento,
     validade_proposta,
+    instalacao,
+    frete,
     moeda,
     condicoes_gerais,
     comprador,
@@ -388,8 +396,9 @@ app.put("/cotacoes/:id", (req, res) => {
         "Cancelada",
       ],
       "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
-      Aceita: ["Pausada", "Cancelada"],
+      Aceita: ["Faturada", "Pausada", "Cancelada"],
       Pausada: ["Aceita", "Cancelada"],
+      Faturada: [],
       Recusada: [],
       Cancelada: [],
     };
@@ -437,15 +446,16 @@ app.put("/cotacoes/:id", (req, res) => {
         // full update
         db.prepare(
           `
-          UPDATE cotacoes SET
-            num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?,
-            cliente_email=?, objetivo=?, descricao_equipamentos=?,
-            condicoes_proposta=?, observacoes=?, prazo_entrega=?,
-            data_aceite=?, data_prevista=?, cond_pagamento=?,
-            validade_proposta=?, moeda=?, condicoes_gerais=?,
-            comprador=?, comprador_email=?, comprador_telefone=?,
-            status=?, updated_at=datetime('now')
-          WHERE id=?
+UPDATE cotacoes SET
+  num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?,
+  cliente_email=?, objetivo=?, descricao_equipamentos=?,
+  condicoes_proposta=?, observacoes=?, prazo_entrega=?,
+  data_aceite=?, data_prevista=?, cond_pagamento=?,
+  validade_proposta=?, moeda=?, condicoes_gerais=?,
+  comprador=?, comprador_email=?, comprador_telefone=?,
+  instalacao=?, frete=?,
+  status=?, updated_at=datetime('now')
+WHERE id=?
         `,
         ).run(
           num_cotacao,
@@ -467,6 +477,8 @@ app.put("/cotacoes/:id", (req, res) => {
           comprador,
           comprador_email,
           comprador_telefone,
+          instalacao || "cliente",
+          frete || "cliente",
           statusNovo,
           req.params.id,
         );
@@ -479,9 +491,9 @@ app.put("/cotacoes/:id", (req, res) => {
         for (const item of itens) {
           db.prepare(
             `
-            INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, total)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `,
+    INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `,
           ).run(
             req.params.id,
             item.item,
@@ -489,6 +501,7 @@ app.put("/cotacoes/:id", (req, res) => {
             item.descricao,
             item.unidade,
             item.val_unitario,
+            item.ipi || 0,
             item.total,
           );
         }
@@ -553,35 +566,37 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
         .prepare(
           `
   INSERT INTO cotacoes (
-    num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
-    objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
-    prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
-    condicoes_gerais, comprador, comprador_email, comprador_telefone,
-    status, revisao
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', ?)
+  num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
+  objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
+  prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
+  condicoes_gerais, comprador, comprador_email, comprador_telefone,
+  instalacao, frete,
+  status, revisao
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
 `,
         )
         .run(
-          current.num_cotacao,
-          current.data_cotacao,
-          current.cliente,
-          current.cliente_contato,
-          current.cliente_email,
-          current.objetivo,
-          current.descricao_equipamentos,
-          current.condicoes_proposta,
-          current.observacoes,
-          current.prazo_entrega,
-          current.data_aceite,
-          current.data_prevista,
-          current.cond_pagamento,
-          current.validade_proposta,
-          current.moeda,
-          current.condicoes_gerais,
-          current.comprador,
-          current.comprador_email,
-          current.comprador_telefone,
-          current.revisao + 1,
+          num_cotacao,
+          data_cotacao,
+          cliente,
+          cliente_contato,
+          cliente_email,
+          objetivo,
+          descricao_equipamentos,
+          condicoes_proposta,
+          observacoes,
+          prazo_entrega,
+          data_aceite,
+          data_prevista,
+          cond_pagamento,
+          validade_proposta,
+          moeda,
+          condicoes_gerais,
+          comprador,
+          comprador_email,
+          comprador_telefone,
+          instalacao || "cliente",
+          frete || "cliente",
         );
 
       const novaId = result.lastInsertRowid;
@@ -590,9 +605,9 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
       for (const item of currentItens) {
         db.prepare(
           `
-          INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, total)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `,
+    INSERT INTO cotacao_itens (cotacao_id, item, quantidade, descricao, unidade, val_unitario, ipi, total)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `,
         ).run(
           novaId,
           item.item,
@@ -600,6 +615,7 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
           item.descricao,
           item.unidade,
           item.val_unitario,
+          item.ipi || 0,
           item.total,
         );
       }
@@ -622,6 +638,117 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
   }
 });
 
+// GET - fetch payment conditions for a cotação
+app.get("/cotacoes/:id/pagamentos", (req, res) => {
+  try {
+    const pagamentos = db
+      .prepare(
+        `
+      SELECT * FROM cotacao_pagamentos WHERE cotacao_id = ? ORDER BY id ASC
+    `,
+      )
+      .all(req.params.id);
+    res.json(pagamentos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - save payment conditions for a cotação
+app.post("/cotacoes/:id/pagamentos", (req, res) => {
+  const { pagamentos } = req.body;
+  try {
+    const transaction = db.transaction(() => {
+      db.prepare(`DELETE FROM cotacao_pagamentos WHERE cotacao_id = ?`).run(
+        req.params.id,
+      );
+
+      // get cotação total to calculate values
+      const itens = db
+        .prepare(
+          `
+        SELECT total FROM cotacao_itens WHERE cotacao_id = ?
+      `,
+        )
+        .all(req.params.id);
+      const totalCotacao = itens.reduce((sum, i) => sum + (i.total || 0), 0);
+
+      // get cotação dates for projection calculation
+      const cotacao = db
+        .prepare(
+          `
+        SELECT data_aceite, data_prevista FROM cotacoes WHERE id = ?
+      `,
+        )
+        .get(req.params.id);
+
+      for (const p of pagamentos || []) {
+        // calculate valor_projetado
+        const valorProjetado = (parseFloat(p.percentual) / 100) * totalCotacao;
+
+        // calculate data_projetada server-side as well
+        let dataProjetada = p.data_projetada || null;
+
+        if (!dataProjetada && p.gatilho !== "data_fixa") {
+          let dataBase = null;
+          if (p.gatilho === "aceite" && cotacao?.data_aceite) {
+            dataBase = new Date(cotacao.data_aceite);
+          } else if (
+            (p.gatilho === "entrega" || p.gatilho === "faturamento") &&
+            cotacao?.data_prevista
+          ) {
+            const [d, m, y] = cotacao.data_prevista.split("/");
+            dataBase = new Date(`${y}-${m}-${d}T00:00:00`);
+          }
+          if (dataBase) {
+            dataBase.setDate(dataBase.getDate() + (parseInt(p.dias_apos) || 0));
+            dataProjetada = dataBase.toISOString().split("T")[0];
+          }
+        } else if (p.gatilho === "data_fixa") {
+          dataProjetada = p.data_fixa || null;
+        }
+
+        db.prepare(
+          `
+  INSERT INTO cotacao_pagamentos 
+    (cotacao_id, descricao, percentual, gatilho, dias_apos, data_fixa, valor_projetado, data_projetada, status)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`,
+        ).run(
+          req.params.id,
+          p.descricao,
+          p.percentual,
+          p.gatilho,
+          p.dias_apos || 0,
+          p.data_fixa || null,
+          valorProjetado,
+          dataProjetada,
+          p.status || "Projecao",
+        );
+      }
+    });
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH - mark cotacao pagamento as Paga or reopen
+app.patch("/cotacoes/pagamentos/:id/status", (req, res) => {
+  const { status, data_pagamento } = req.body;
+  try {
+    db.prepare(
+      `
+      UPDATE cotacao_pagamentos SET status = ?, data_pagamento = ? WHERE id = ?
+    `,
+    ).run(status, data_pagamento || null, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET - generate PDF for a cotação
 app.get("/cotacoes/:id/pdf", async (req, res) => {
   try {
@@ -638,7 +765,36 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       )
       .all(req.params.id);
 
+    // add this right after:
+    const pagamentos = db
+      .prepare(
+        `
+  SELECT * FROM cotacao_pagamentos WHERE cotacao_id = ? ORDER BY id ASC
+`,
+      )
+      .all(req.params.id);
+
     const moeda = cotacao.moeda || "BRL";
+
+    const pagamentosResumo =
+      pagamentos.length > 0
+        ? pagamentos
+            .map((p) => {
+              const valorStr = p.valor_projetado
+                ? ` = ${p.valor_projetado.toLocaleString("pt-BR", { style: "currency", currency: moeda })}`
+                : "";
+              let gatilhoStr = "";
+              if (p.gatilho !== "data_fixa") {
+                gatilhoStr = ` (${p.gatilho}${p.dias_apos > 0 ? ` +${p.dias_apos}d` : ""})`;
+              }
+              const dataStr = p.data_projetada
+                ? ` → ${new Date(p.data_projetada + "T00:00:00").toLocaleDateString("pt-BR")}`
+                : "";
+              return `${p.percentual}% ${p.descricao.toLowerCase()}${valorStr}${gatilhoStr}${dataStr}`;
+            })
+            .join(" + ")
+        : cotacao.cond_pagamento || "-"; // fallback to old text field
+
     const totalGeral = itens.reduce((sum, item) => sum + (item.total ?? 0), 0);
     const totalGeralFormatado = totalGeral.toLocaleString("pt-BR", {
       style: "currency",
@@ -685,14 +841,15 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     const itensHTML = itens
       .map(
         (item) => `
-  <tr>
-    <td>${item.item}</td>
-    <td>${item.quantidade ?? ""}</td>
-    <td>${item.descricao ?? ""}</td>
-    <td>${item.unidade ?? ""}</td>
-    <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
-    <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
-  </tr>
+<tr>
+  <td>${item.item}</td>
+  <td>${item.quantidade ?? ""}</td>
+  <td>${item.descricao ?? ""}</td>
+  <td>${item.unidade ?? ""}</td>
+  <td>${item.val_unitario?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+  <td>${item.ipi ?? "0"}%</td>
+  <td>${item.total?.toLocaleString("pt-BR", { style: "currency", currency: moeda }) ?? ""}</td>
+</tr>
 `,
       )
       .join("");
@@ -799,39 +956,60 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     <td style="width:50%; vertical-align: top; border: none;">
       <h2>CONDIÇÕES COMERCIAIS</h2>
       <hr>
-      <table style="width:100%; border-collapse: collapse; border: none;">
-        <tr>
-          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">PRAZO DE ENTREGA (dias após aceite)</div>
-            <div>${cotacao.prazo_entrega ?? "-"}</div>
-          </td>
-          <td style="width:50%; vertical-align: top; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">VALIDADE DA PROPOSTA</div>
-            <div>${cotacao.validade_proposta ?? "-"}</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">CONDIÇÃO DE PAGAMENTO</div>
-            <div>${cotacao.cond_pagamento ?? "-"}</div>
-          </td>
-          <td style="width:50%; vertical-align: top; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">MOEDA</div>
-            <div>${cotacao.moeda ?? "BRL"}</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA DE ACEITE</div>
-            <div>${formatarData(cotacao.data_aceite)}</div>
-          </td>
-          <td style="width:50%; vertical-align: top; border: none;">
-            <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA PREVISTA DE ENTREGA</div>
-            <div>${cotacao.data_prevista ?? "-"}</div>
-          </td>
-        </tr>
-      </table>
+<table style="width:100%; border-collapse: collapse; border: none;">
+  <tr>
+    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">PRAZO DE ENTREGA (dias após aceite)</div>
+      <div>${cotacao.prazo_entrega ?? "-"}</div>
     </td>
+    <td style="width:50%; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">VALIDADE DA PROPOSTA</div>
+      <div>${cotacao.validade_proposta ?? "-"}</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">INSTALAÇÃO</div>
+      <div>${cotacao.instalacao ? cotacao.instalacao.charAt(0).toUpperCase() + cotacao.instalacao.slice(1) : "Cliente"}</div>
+    </td>
+    <td style="width:50%; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">FRETE</div>
+      <div>${cotacao.frete ? cotacao.frete.charAt(0).toUpperCase() + cotacao.frete.slice(1) : "Cliente"}</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">MOEDA</div>
+      <div>${cotacao.moeda ?? "BRL"}</div>
+    </td>
+    <td style="width:50%; vertical-align: top; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA DE ACEITE</div>
+      <div>${formatarData(cotacao.data_aceite)}</div>
+    </td>
+  </tr>
+  <tr>
+    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA PREVISTA DE ENTREGA</div>
+      <div>${cotacao.data_prevista ?? "-"}</div>
+    </td>
+  </tr>
+</table>
+
+    </td>
+  </tr>
+</table>
+
+<!-- CONDIÇÕES DE PAGAMENTO + TOTAL GERAL aligned left -->
+<table style="width:100%; border-collapse: collapse; border: none; margin-top: 4mm;">
+  <tr>
+    <td style="border: none; width: 50%; vertical-align: top;">
+      <div style="font-size: 8pt; font-weight: bold;">CONDIÇÕES DE PAGAMENTO</div>
+      <div style="font-size: 9pt; margin-top: 1mm;">${pagamentosResumo}</div>
+      <div style="font-size: 11pt; font-weight: bold; color: #1a5c35; margin-top: 3mm;">
+        TOTAL GERAL: ${totalGeralFormatado}
+      </div>
+    </td>
+    <td style="border: none; width: 50%;"></td>
   </tr>
 </table>
 
@@ -848,16 +1026,17 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
         <h2>PROPOSTA COMERCIAL</h2>
         <hr>
         <table>
-          <thead>
-            <tr>
-              <th>ITEM</th>
-              <th>QTD</th>
-              <th>DESCRIÇÃO</th>
-              <th>UNID.</th>
-              <th>VALOR UNIT.</th>
-              <th>TOTAL</th>
-            </tr>
-          </thead>
+ <thead>
+  <tr>
+    <th>ITEM</th>
+    <th>QTD</th>
+    <th>DESCRIÇÃO</th>
+    <th>UNID.</th>
+    <th>VALOR UNIT.</th>
+    <th>IPI (%)</th>
+    <th>TOTAL</th>
+  </tr>
+</thead>
           <tbody>
             ${itensHTML}
           </tbody>
@@ -1012,6 +1191,128 @@ function subst() {
     res.send(pdfBuffer);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MULTER STORAGE CONFIG FOR COTAÇÕES
+const storageCotacao = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../frontend/uploads/cotacoes"));
+  },
+  filename: (req, file, cb) => {
+    const numCotacao = req.params.numCotacao.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path
+      .basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9-_.]/g, "_");
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, "0");
+    const mes = String(now.getMonth() + 1).padStart(2, "0");
+    const ano = now.getFullYear();
+    const dataFormatada = `${dia}${mes}${ano}`;
+    cb(null, `${numCotacao}_${nameWithoutExt}_${dataFormatada}${ext}`);
+  },
+});
+
+const uploadCotacao = multer({
+  storage: storageCotacao,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+// POST - upload files to a cotação
+app.post(
+  "/cotacoes/:numCotacao/arquivos",
+  uploadCotacao.array("arquivos", 10),
+  (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "Nenhum arquivo enviado." });
+      }
+      const arquivos = req.files.map((f) => ({
+        nome: f.originalname,
+        arquivo: f.filename,
+        tamanho: f.size,
+      }));
+      res.json({ success: true, arquivos });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
+
+// GET - list files for a cotação
+app.get("/cotacoes/:numCotacao/arquivos", (req, res) => {
+  try {
+    const numCotacao = req.params.numCotacao.replace(/[^a-zA-Z0-9-_]/g, "_");
+    const uploadsDir = path.join(__dirname, "../frontend/uploads/cotacoes");
+    const allFiles = fs.readdirSync(uploadsDir);
+    const arquivos = allFiles
+      .filter((f) => f.startsWith(numCotacao + "_"))
+      .map((f) => ({
+        nome: f
+          .replace(new RegExp(`^${numCotacao}_`), "")
+          .replace(/_\d{8}(\.[^.]+)$/, "$1"),
+        arquivo: f,
+        url: `/uploads/cotacoes/${f}`,
+      }));
+    res.json(arquivos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - delete a file from a cotação
+app.delete("/cotacoes/:numCotacao/arquivos/:filename", (req, res) => {
+  try {
+    const filePath = path.join(
+      __dirname,
+      "../frontend/uploads/cotacoes",
+      req.params.filename,
+    );
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Arquivo não encontrado." });
+    }
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - projected payments from accepted cotações (not yet Faturada)
+app.get("/relatorios/projecoes-cotacoes", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT
+        cp.id,
+        cp.cotacao_id,
+        cp.descricao,
+        cp.percentual,
+        cp.gatilho,
+        cp.dias_apos,
+        cp.data_fixa,
+        cp.valor_projetado,
+        cp.data_projetada,
+        cp.status,
+        cp.data_pagamento,
+        c.num_cotacao,
+        c.cliente,
+        c.status as cotacao_status,
+        c.data_aceite,
+        c.data_prevista
+      FROM cotacao_pagamentos cp
+      JOIN cotacoes c ON c.id = cp.cotacao_id
+      WHERE c.status = 'Aceita'
+        AND cp.data_projetada IS NOT NULL
+      ORDER BY cp.data_projetada ASC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -2556,7 +2857,7 @@ app.get("/relatorios/kpi", (req, res) => {
       .split("T")[0];
     const hoje = new Date().toISOString().split("T")[0];
 
-    // A Pagar este mês (Entrada, Aberta, vence este mês)
+    // A Pagar este mês
     const aPagar = db
       .prepare(
         `
@@ -2570,7 +2871,7 @@ app.get("/relatorios/kpi", (req, res) => {
       )
       .get(inicioMes, fimMes);
 
-    // A Receber este mês (Saída, Aberta, vence este mês)
+    // A Receber este mês (NFs de saída + projeções de cotações)
     const aReceber = db
       .prepare(
         `
@@ -2584,7 +2885,36 @@ app.get("/relatorios/kpi", (req, res) => {
       )
       .get(inicioMes, fimMes);
 
-    // Vencido em aberto (all directions, overdue)
+    const projecoesReceber = db
+      .prepare(
+        `
+  SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.status = 'Projecao'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+`,
+      )
+      .get(inicioMes, fimMes);
+
+    // paid projections - still count toward total receivable for the period
+    const projecoesPagas = db
+      .prepare(
+        `
+  SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.status = 'Paga'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+`,
+      )
+      .get(inicioMes, fimMes);
+
+    const totalAReceber = aReceber.total + projecoesReceber.total;
+
+    // Vencido em aberto (NFs + projeções vencidas)
     const vencido = db
       .prepare(
         `
@@ -2598,15 +2928,30 @@ app.get("/relatorios/kpi", (req, res) => {
       )
       .get(hoje);
 
+    const vencidoProjecoes = db
+      .prepare(
+        `
+      SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+      FROM cotacao_pagamentos cp
+      JOIN cotacoes c ON c.id = cp.cotacao_id
+      WHERE c.status = 'Aceita'
+        AND cp.status = 'Projecao'
+        AND cp.data_projetada < ?
+    `,
+      )
+      .get(hoje);
+
+    const totalVencido = vencido.total + vencidoProjecoes.total;
+
     // last 6 months bar chart data
     const ultimos6Meses = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date();
+      const d = new Date(parseInt(ano), parseInt(mesNum) - 1, 1); // use selected month
       d.setMonth(d.getMonth() - i);
-      const ano = d.getFullYear();
-      const mes = String(d.getMonth() + 1).padStart(2, "0");
-      const inicio = `${ano}-${mes}-01`;
-      const fim = new Date(ano, d.getMonth() + 1, 0)
+      const anoMes = d.getFullYear();
+      const mesMes = String(d.getMonth() + 1).padStart(2, "0");
+      const inicio = `${anoMes}-${mesMes}-01`;
+      const fim = new Date(anoMes, d.getMonth() + 1, 0)
         .toISOString()
         .split("T")[0];
 
@@ -2619,6 +2964,18 @@ app.get("/relatorios/kpi", (req, res) => {
         WHERE nf.direcao = 'Saída'
           AND d.dVenc >= ? AND d.dVenc <= ?
       `,
+        )
+        .get(inicio, fim);
+
+      const projecoes = db
+        .prepare(
+          `
+  SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+`,
         )
         .get(inicio, fim);
 
@@ -2635,8 +2992,8 @@ app.get("/relatorios/kpi", (req, res) => {
         .get(inicio, fim);
 
       ultimos6Meses.push({
-        mes: `${mes}/${ano}`,
-        entradas: entradas.total,
+        mes: `${mesMes}/${anoMes}`,
+        entradas: entradas.total + projecoes.total,
         saidas: saidas.total,
       });
     }
@@ -2645,38 +3002,71 @@ app.get("/relatorios/kpi", (req, res) => {
     const dupAbertasMes = db
       .prepare(
         `
-      SELECT COALESCE(SUM(d.vDup), 0) as total
-      FROM nf_duplicatas d
-      JOIN notas_fiscais nf ON nf.id = d.nf_id
-      WHERE d.status = 'Aberta'
-        AND d.dVenc >= ? AND d.dVenc <= ?
-        AND nf.direcao != 'Sem valor financeiro'
-    `,
+  SELECT COALESCE(SUM(d.vDup), 0) as total
+  FROM nf_duplicatas d
+  JOIN notas_fiscais nf ON nf.id = d.nf_id
+  WHERE d.status = 'Aberta'
+    AND d.dVenc >= ? AND d.dVenc <= ?
+    AND nf.direcao != 'Sem valor financeiro'
+`,
+      )
+      .get(inicioMes, fimMes);
+
+    const projecoesAbertasMes = db
+      .prepare(
+        `
+  SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.status = 'Projecao'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+`,
       )
       .get(inicioMes, fimMes);
 
     const dupPagasMes = db
       .prepare(
         `
-      SELECT COALESCE(SUM(d.vDup), 0) as total
-      FROM nf_duplicatas d
-      JOIN notas_fiscais nf ON nf.id = d.nf_id
-      WHERE d.status = 'Paga'
-        AND d.data_pagamento >= ? AND d.data_pagamento <= ?
-        AND nf.direcao != 'Sem valor financeiro'
-    `,
+  SELECT COALESCE(SUM(d.vDup), 0) as total
+  FROM nf_duplicatas d
+  JOIN notas_fiscais nf ON nf.id = d.nf_id
+  WHERE d.status = 'Paga'
+    AND (
+      (d.data_pagamento >= ? AND d.data_pagamento <= ?)
+      OR (d.data_pagamento IS NULL AND d.dVenc >= ? AND d.dVenc <= ?)
+    )
+    AND nf.direcao != 'Sem valor financeiro'
+`,
+      )
+      .get(inicioMes, fimMes, inicioMes, fimMes);
+
+    const projecoesPagasMes = db
+      .prepare(
+        `
+  SELECT COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.status = 'Paga'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+`,
       )
       .get(inicioMes, fimMes);
 
     res.json({
       aPagar: aPagar.total,
-      aReceber: aReceber.total,
-      vencido: vencido.total,
-      saldoProjetado: aReceber.total - aPagar.total,
+      aReceber: totalAReceber,
+      vencido: totalVencido,
+      saldoProjetado:
+        aReceber.total +
+        projecoesReceber.total +
+        projecoesPagas.total -
+        aPagar.total,
       ultimos6Meses,
       donut: {
-        abertas: dupAbertasMes.total,
-        pagas: dupPagasMes.total,
+        abertas: dupAbertasMes.total + projecoesAbertasMes.total,
+        pagas: dupPagasMes.total + projecoesPagasMes.total,
       },
     });
   } catch (err) {
@@ -2689,7 +3079,6 @@ app.get("/relatorios/fluxo-caixa", (req, res) => {
   try {
     const { inicio, fim } = req.query;
 
-    // default to last 6 months if no range provided
     const dataFim = fim || new Date().toISOString().split("T")[0];
     const dataInicio =
       inicio ||
@@ -2699,7 +3088,7 @@ app.get("/relatorios/fluxo-caixa", (req, res) => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
       })();
 
-    // get all duplicatas in range grouped by month
+    // existing duplicatas query
     const duplicatas = db
       .prepare(
         `
@@ -2718,8 +3107,27 @@ app.get("/relatorios/fluxo-caixa", (req, res) => {
       )
       .all(dataInicio, dataFim);
 
+    // projected payments from accepted cotações (not yet Faturada)
+    const projecoes = db
+      .prepare(
+        `
+  SELECT
+    strftime('%Y-%m', cp.data_projetada) as mes,
+    cp.status,
+    COALESCE(SUM(cp.valor_projetado), 0) as total
+  FROM cotacao_pagamentos cp
+  JOIN cotacoes c ON c.id = cp.cotacao_id
+  WHERE c.status = 'Aceita'
+    AND cp.data_projetada >= ? AND cp.data_projetada <= ?
+  GROUP BY mes, cp.status
+  ORDER BY mes ASC
+`,
+      )
+      .all(dataInicio, dataFim);
+
     // build month-by-month summary
     const meses = {};
+
     duplicatas.forEach((row) => {
       if (!meses[row.mes]) {
         meses[row.mes] = {
@@ -2728,6 +3136,7 @@ app.get("/relatorios/fluxo-caixa", (req, res) => {
           entradasAbertas: 0,
           saidasPagas: 0,
           saidasAbertas: 0,
+          entradasProjetadas: 0,
         };
       }
       if (row.direcao === "Saída" && row.status === "Paga")
@@ -2740,21 +3149,43 @@ app.get("/relatorios/fluxo-caixa", (req, res) => {
         meses[row.mes].saidasAbertas += row.total;
     });
 
+    // add projeções
+    projecoes.forEach((row) => {
+      if (!meses[row.mes]) {
+        meses[row.mes] = {
+          mes: row.mes,
+          entradasPagas: 0,
+          entradasAbertas: 0,
+          saidasPagas: 0,
+          saidasAbertas: 0,
+          entradasProjetadas: 0,
+        };
+      }
+      if (row.status === "Paga") {
+        meses[row.mes].entradasPagas += row.total; // moves to paid
+      } else {
+        meses[row.mes].entradasProjetadas += row.total; // stays as forecast
+      }
+    });
+
     // calculate running balance
     let saldoAcumulado = 0;
-    const resultado = Object.values(meses).map((m) => {
-      const entradaTotal = m.entradasPagas + m.entradasAbertas;
-      const saidaTotal = m.saidasPagas + m.saidasAbertas;
-      const saldoMes = entradaTotal - saidaTotal;
-      saldoAcumulado += saldoMes;
-      return {
-        ...m,
-        entradaTotal,
-        saidaTotal,
-        saldoMes,
-        saldoAcumulado,
-      };
-    });
+    const resultado = Object.values(meses)
+      .sort((a, b) => a.mes.localeCompare(b.mes))
+      .map((m) => {
+        const entradaTotal =
+          m.entradasPagas + m.entradasAbertas + m.entradasProjetadas;
+        const saidaTotal = m.saidasPagas + m.saidasAbertas;
+        const saldoMes = entradaTotal - saidaTotal;
+        saldoAcumulado += saldoMes;
+        return {
+          ...m,
+          entradaTotal,
+          saidaTotal,
+          saldoMes,
+          saldoAcumulado,
+        };
+      });
 
     res.json(resultado);
   } catch (err) {

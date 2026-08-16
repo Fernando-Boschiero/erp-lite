@@ -53,12 +53,14 @@ Screenshot of the PO consultation screen:
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/your-username/your-repo-name.git
 cd your-repo-name
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
@@ -68,6 +70,7 @@ npm install
 4. Install wkhtmltopdf from https://wkhtmltopdf.org/downloads.html
 
 5. Start the server:
+
 ```bash
 npm run dev
 ```
@@ -87,8 +90,9 @@ pm2 save
 ```
 
 ## Project Structure
+
 <img width="429" height="267" alt="image" src="https://github.com/user-attachments/assets/13dc1380-6472-4c50-8fd3-5ab680b2292d" />
 
 ## License
-Private — All rights reserved.
 
+Private — All rights reserved.

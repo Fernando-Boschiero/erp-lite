@@ -42,7 +42,7 @@ const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
 /* ─── LOAD PEDIDOS INTO DROPDOWN ─── */
 async function carregarPedidos() {
-  const res = await fetch("http://localhost:3000/pedidos");
+  const res = await fetch("http://192.168.15.99:3000/pedidos");
   pedidos = await res.json();
   pedidos.forEach((p) => {
     const option = document.createElement("option");
@@ -402,13 +402,39 @@ function processarNFMunicipal(xml) {
   const [dia, mes, ano] = dhEmiRaw.split("/");
   const dhEmi = `${ano}-${mes}-${dia}T00:00:00`;
 
-  const veikonCNPJ = "19309792000109";
-  const prestadorDoc = getVal(dadosPrestador, "documento");
-  const prestadorNome = getVal(dadosPrestador, "razaoSocial");
-  const tomadorNome = getVal(dadosTomador, "razaoSocial");
+  // get supplier/customer names with fallbacks
+  const prestadorNome =
+    getVal(dadosPrestador, "razaoSocial") ||
+    getVal(dadosPrestador, "nomeFantasia") ||
+    null;
+  const tomadorNome =
+    getVal(dadosTomador, "razaoSocial") ||
+    getVal(dadosTomador, "nomeTomador") ||
+    null;
 
-  const isSaida = prestadorDoc === veikonCNPJ;
-  const xNome = isSaida ? tomadorNome : prestadorNome;
+  // get documents with fallbacks
+  const prestadorDoc =
+    getVal(dadosPrestador, "documento") || getVal(dadosPrestador, "cnpj") || "";
+  const tomadorDoc =
+    getVal(dadosTomador, "documento") || getVal(dadosTomador, "cnpj") || "";
+
+  // determine direction and xNome
+  const veikonCNPJ = "19309792000109";
+  let isSaida = false;
+  let xNome = "";
+
+  if (prestadorDoc === veikonCNPJ) {
+    // Veikon is the provider — saída
+    isSaida = true;
+    xNome = tomadorNome || "";
+  } else if (tomadorDoc === veikonCNPJ) {
+    // Veikon is the recipient — entrada
+    isSaida = false;
+    xNome = prestadorNome || "";
+  } else {
+    // fallback — use whatever name is available
+    xNome = prestadorNome || tomadorNome || "";
+  }
 
   const direcaoSelect = document.getElementById("direcaoNF");
   if (direcaoSelect) {
@@ -626,6 +652,18 @@ if (btnSalvarNF) {
       return;
     }
 
+    // check if supplier name is filled
+    const xNomeInput = document.getElementById("xNome");
+    if (!xNomeInput?.value?.trim()) {
+      alert(
+        "Por favor, informe o nome do fornecedor/emitente antes de salvar.",
+      );
+      return;
+    }
+
+    // update dadosXML with manually entered xNome
+    dadosXML.xNome = xNomeInput.value.trim(); // ← add this line
+
     const pedido = pedidos.find((p) => p.id == pedidoSelect.value);
 
     // warn if supplier names don't match
@@ -659,7 +697,7 @@ if (btnSalvarNF) {
       direcao: document.getElementById("direcaoNF")?.value || "Entrada",
     };
 
-    const result = await fetch("http://localhost:3000/notas-fiscais", {
+    const result = await fetch("http://192.168.15.99:3000/notas-fiscais", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
