@@ -1,6 +1,8 @@
 /* ─── STATE ─── */
 let nfData = null;
 let pedidos = [];
+let cotacoes = [];
+let cotacoesSelecionadas = [];
 const tiposComPedido = [
   "PC - Aluguel de Equipamento",
   "PC - Ativo",
@@ -39,6 +41,10 @@ const pedidoSelect = document.getElementById("pedidoSelect");
 const vinculoPedido = document.getElementById("vinculo-pedido");
 const btnSalvar = document.getElementById("btn-salvar-nf");
 const btnVoltar = document.getElementById("btn-voltar");
+const cotacaoSelect = document.getElementById("cotacaoSelect");
+const btnAdicionarCotacao = document.getElementById("btn-adicionar-cotacao");
+const cotacoesVinculadasDiv = document.getElementById("cotacoes-vinculadas");
+const vinculoCotacao = document.getElementById("vinculo-cotacao");
 
 /* ─── LOAD PEDIDOS ─── */
 async function carregarPedidos() {
@@ -56,7 +62,8 @@ async function carregarPedidos() {
 async function carregarNF() {
   const res = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`);
   nfData = await res.json();
-
+  console.log("cotacao_id:", nfData.cotacao_id);
+  console.log("cotacoes loaded:", cotacoes.length);
   const direcaoNF = document.getElementById("direcaoNF");
   if (direcaoNF) direcaoNF.value = nfData.direcao ?? "Entrada";
 
@@ -67,6 +74,21 @@ async function carregarNF() {
     razao_social: p.razao_social,
   }));
   renderPedidosSelecionados();
+
+  // populate cotacoesSelecionadas from cotacao_id
+  if (nfData.cotacao_id) {
+    const cotacao = cotacoes.find((c) => c.id == nfData.cotacao_id);
+    if (cotacao) {
+      cotacoesSelecionadas = [
+        {
+          id: cotacao.id,
+          num_cotacao: cotacao.num_cotacao,
+          cliente: cotacao.cliente,
+        },
+      ];
+    }
+    renderCotacoesSelecionadas();
+  }
 
   // fill read-only fields
   document.getElementById("nNF").value = nfData.nNF ?? "";
@@ -290,12 +312,19 @@ if (btnAdicionarDup) {
   });
 }
 
-/* ─── SHOW/HIDE PEDIDO SECTION ─── */
+/* ─── SHOW/HIDE PEDIDO/COTAÇÃO SECTION ─── */
 function atualizarVinculo(tipo) {
   if (tiposComPedido.includes(tipo)) {
     vinculoPedido.style.display = "block";
+    if (vinculoCotacao) vinculoCotacao.style.display = "none";
+  } else if (tiposComCotacao.includes(tipo)) {
+    vinculoPedido.style.display = "none";
+    if (vinculoCotacao) vinculoCotacao.style.display = "block";
+    pedidosSelecionados = [];
+    renderPedidosSelecionados();
   } else {
     vinculoPedido.style.display = "none";
+    if (vinculoCotacao) vinculoCotacao.style.display = "none";
     pedidosSelecionados = [];
     renderPedidosSelecionados();
   }
@@ -379,11 +408,15 @@ if (btnSalvar) {
       pedido_ids: tiposComPedido.includes(tipoNF.value)
         ? pedidosSelecionados.map((p) => p.id)
         : [],
+      cotacao_id: tiposComCotacao.includes(tipoNF.value)
+        ? cotacoesSelecionadas[0]?.id || null
+        : null,
       status_pagamento:
         nfData.duplicatas && nfData.duplicatas.length === 0
           ? statusPagamento.value
           : undefined,
       direcao: direcaoNF?.value || "Entrada",
+      xNome: document.getElementById("xNome")?.value || "",
     };
 
     const result = await fetch(`http://localhost:3000/notas-fiscais/${nfId}`, {
@@ -408,9 +441,67 @@ if (btnVoltar) {
   });
 }
 
+async function carregarCotacoes() {
+  const res = await fetch("http://localhost:3000/cotacoes");
+  cotacoes = await res.json();
+  cotacoes.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = c.id;
+    option.textContent = `${c.num_cotacao} — ${c.cliente}`;
+    if (cotacaoSelect) cotacaoSelect.appendChild(option);
+  });
+}
+
+function renderCotacoesSelecionadas() {
+  if (!cotacoesVinculadasDiv) return;
+  cotacoesVinculadasDiv.innerHTML = "";
+
+  if (cotacoesSelecionadas.length === 0) {
+    cotacoesVinculadasDiv.innerHTML = `<p style="color:#6c757d;">Nenhuma cotação vinculada.</p>`;
+    return;
+  }
+
+  cotacoesSelecionadas.forEach((c) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px; background:#f8f9fa;";
+    div.innerHTML = `
+      <span style="flex:1;"><strong>${c.num_cotacao}</strong> — ${c.cliente}</span>
+      <button type="button" class="btn-remover-cotacao" data-id="${c.id}"
+        style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+    `;
+    cotacoesVinculadasDiv.appendChild(div);
+  });
+
+  cotacoesVinculadasDiv
+    .querySelectorAll(".btn-remover-cotacao")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        cotacoesSelecionadas = cotacoesSelecionadas.filter(
+          (c) => c.id != btn.dataset.id,
+        );
+        renderCotacoesSelecionadas();
+      });
+    });
+}
+
+if (btnAdicionarCotacao) {
+  btnAdicionarCotacao.addEventListener("click", () => {
+    const cotacao = cotacoes.find((c) => c.id == cotacaoSelect.value);
+    if (!cotacao) return;
+    if (cotacoesSelecionadas.find((c) => c.id == cotacao.id)) {
+      alert("Esta cotação já foi adicionada.");
+      return;
+    }
+    cotacoesSelecionadas.push(cotacao);
+    cotacaoSelect.value = "";
+    renderCotacoesSelecionadas();
+  });
+}
+
 /* ─── INIT ─── */
 if (!nfId) {
   alert("Nota fiscal não encontrada.");
 } else {
-  carregarPedidos().then(() => carregarNF());
+  Promise.all([carregarPedidos(), carregarCotacoes()]).then(() => carregarNF());
 }

@@ -1195,6 +1195,33 @@ function subst() {
   }
 });
 
+// GET - fetch NFs linked to a cotação
+app.get("/cotacoes/:id/notas-fiscais", (req, res) => {
+  try {
+    const nfs = db
+      .prepare(
+        `
+      SELECT
+        nf.id,
+        nf.nNF,
+        nf.xNome,
+        nf.tipo,
+        nf.direcao,
+        nf.status_pagamento,
+        nf.dhEmi,
+        COALESCE((SELECT SUM(i.vProd) FROM nf_itens_fiscal i WHERE i.nf_id = nf.id), 0) as valor_total
+      FROM notas_fiscais nf
+      WHERE nf.cotacao_id = ?
+      ORDER BY nf.created_at ASC
+    `,
+      )
+      .all(req.params.id);
+    res.json(nfs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // MULTER STORAGE CONFIG FOR COTAÇÕES
 const storageCotacao = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -2553,7 +2580,8 @@ app.get("/notas-fiscais/:id", (req, res) => {
 
 // PUT - update a nota fiscal (tipo, pedido_id, status_pagamento)
 app.put("/notas-fiscais/:id", (req, res) => {
-  const { tipo, pedido_ids, status_pagamento, direcao } = req.body;
+  const { tipo, pedido_ids, status_pagamento, direcao, xNome, cotacao_id } =
+    req.body;
   try {
     const transaction = db.transaction(() => {
       // get fornecedor_id from first pedido
@@ -2571,16 +2599,20 @@ app.put("/notas-fiscais/:id", (req, res) => {
     tipo = ?,
     pedido_id = ?,
     fornecedor_id = ?,
+    cotacao_id = ?,
     status_pagamento = ?,
-    direcao = ?
+    direcao = ?,
+    xNome = ?
   WHERE id = ?
 `,
       ).run(
         tipo,
         pedido_ids?.[0] || null,
         fornecedor_id,
+        cotacao_id || null,
         status_pagamento,
         direcao || "Entrada",
+        xNome,
         req.params.id,
       );
 

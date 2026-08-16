@@ -84,6 +84,7 @@ function renderTabela() {
       nf.num_pedido,
       nf.aplicacao,
       nf.status_pagamento,
+      nf.direcao, // ← add this
     ]
       .join(" ")
       .toLowerCase()

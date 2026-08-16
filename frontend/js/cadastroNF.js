@@ -42,7 +42,7 @@ const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
 
 /* ─── LOAD PEDIDOS INTO DROPDOWN ─── */
 async function carregarPedidos() {
-  const res = await fetch("http://192.168.15.99:3000/pedidos");
+  const res = await fetch("http://localhost:3000/pedidos");
   pedidos = await res.json();
   pedidos.forEach((p) => {
     const option = document.createElement("option");
@@ -562,16 +562,20 @@ if (tipoNF) {
     if (tiposComPedido.includes(tipo)) {
       vinculoPedido.style.display = "block";
       vinculoCotacao.style.display = "none";
+      cotacoesSelecionadas = [];
+      renderCotacoesSelecionadas();
     } else if (tiposComCotacao.includes(tipo)) {
       vinculoPedido.style.display = "none";
       vinculoCotacao.style.display = "block";
+      pedidosSelecionados = [];
+      renderPedidosSelecionados();
     } else {
       vinculoPedido.style.display = "none";
       vinculoCotacao.style.display = "none";
-      // clear pedido selection
-      if (pedidoSelect) pedidoSelect.value = "";
-      document.getElementById("fornecedorNF").value = "";
-      document.getElementById("aplicacaoNF").value = "";
+      pedidosSelecionados = [];
+      renderPedidosSelecionados();
+      cotacoesSelecionadas = [];
+      renderCotacoesSelecionadas();
     }
   });
 }
@@ -684,10 +688,12 @@ if (btnSalvarNF) {
       pedido_ids: tiposComPedido.includes(tipoNF.value)
         ? pedidosSelecionados.map((p) => p.id)
         : [],
+      cotacao_id: tiposComCotacao.includes(tipoNF.value)
+        ? cotacoesSelecionadas[0]?.id || null
+        : null,
       fornecedor_id: tiposComPedido.includes(tipoNF.value)
         ? pedidosSelecionados[0]?.fornecedor_id || null
         : null,
-      cotacao_id: null,
       nNF: dadosXML.nNF,
       dhEmi: dadosXML.dhEmi,
       xNome: dadosXML.xNome,
@@ -697,7 +703,7 @@ if (btnSalvarNF) {
       direcao: document.getElementById("direcaoNF")?.value || "Entrada",
     };
 
-    const result = await fetch("http://192.168.15.99:3000/notas-fiscais", {
+    const result = await fetch("http://localhost:3000/notas-fiscais", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -717,6 +723,8 @@ if (btnSalvarNF) {
       pedidoSelect.value = "";
       pedidosSelecionados = [];
       renderPedidosSelecionados();
+      cotacoesSelecionadas = [];
+      renderCotacoesSelecionadas();
       document.getElementById("itens-nf-body").innerHTML = "";
       document.getElementById("duplicatas-body").innerHTML = "";
       document.getElementById("total-nf").textContent = "R$ -";
@@ -745,5 +753,72 @@ if (btnCancelarNF) {
   renderPedidosSelecionados();
 }
 
+/* ─── COTAÇÕES ─── */
+let cotacoes = [];
+let cotacoesSelecionadas = [];
+
+const cotacaoSelect = document.getElementById("cotacaoSelect");
+const btnAdicionarCotacao = document.getElementById("btn-adicionar-cotacao");
+const cotacoesVinculadasDiv = document.getElementById("cotacoes-vinculadas");
+
+async function carregarCotacoes() {
+  const res = await fetch("http://localhost:3000/cotacoes");
+  cotacoes = await res.json();
+  cotacoes.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = c.id;
+    option.textContent = `${c.num_cotacao} — ${c.cliente}`;
+    if (cotacaoSelect) cotacaoSelect.appendChild(option);
+  });
+}
+
+function renderCotacoesSelecionadas() {
+  if (!cotacoesVinculadasDiv) return;
+  cotacoesVinculadasDiv.innerHTML = "";
+
+  if (cotacoesSelecionadas.length === 0) {
+    cotacoesVinculadasDiv.innerHTML = `<p style="color:#6c757d;">Nenhuma cotação vinculada.</p>`;
+    return;
+  }
+
+  cotacoesSelecionadas.forEach((c) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px; background:#f8f9fa;";
+    div.innerHTML = `
+      <span style="flex:1;"><strong>${c.num_cotacao}</strong> — ${c.cliente}</span>
+      <button type="button" class="btn-remover-cotacao" data-id="${c.id}"
+        style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+    `;
+    cotacoesVinculadasDiv.appendChild(div);
+  });
+
+  cotacoesVinculadasDiv
+    .querySelectorAll(".btn-remover-cotacao")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        cotacoesSelecionadas = cotacoesSelecionadas.filter(
+          (c) => c.id != btn.dataset.id,
+        );
+        renderCotacoesSelecionadas();
+      });
+    });
+}
+
+if (btnAdicionarCotacao) {
+  btnAdicionarCotacao.addEventListener("click", () => {
+    const cotacao = cotacoes.find((c) => c.id == cotacaoSelect.value);
+    if (!cotacao) return;
+    if (cotacoesSelecionadas.find((c) => c.id == cotacao.id)) {
+      alert("Esta cotação já foi adicionada.");
+      return;
+    }
+    cotacoesSelecionadas.push(cotacao);
+    cotacaoSelect.value = "";
+    renderCotacoesSelecionadas();
+  });
+}
+
 /* ─── INIT ─── */
 carregarPedidos();
+carregarCotacoes();

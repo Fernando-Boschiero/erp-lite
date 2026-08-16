@@ -1020,6 +1020,58 @@ async function carregarCotacao(id) {
   if (secaoArquivosCotacao) secaoArquivosCotacao.style.display = "block";
   await carregarArquivosCotacao();
   await carregarPagamentos(id);
+  await carregarNFsCotacao(id);
+}
+
+/* ─── NOTAS FISCAIS DA COTAÇÃO ─── */
+const secaoNfsCotacao = document.getElementById("secao-nfs-cotacao");
+const listaNfsCotacao = document.getElementById("lista-nfs-cotacao");
+
+async function carregarNFsCotacao(cotacaoId) {
+  if (!cotacaoId) return;
+  const res = await fetch(
+    `http://localhost:3000/cotacoes/${cotacaoId}/notas-fiscais`,
+  );
+  const nfs = await res.json();
+
+  if (!secaoNfsCotacao || !listaNfsCotacao) return;
+
+  if (nfs.length === 0) {
+    secaoNfsCotacao.style.display = "none";
+    return;
+  }
+
+  secaoNfsCotacao.style.display = "block";
+  listaNfsCotacao.innerHTML = "";
+
+  nfs.forEach((nf) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px;";
+    div.innerHTML = `
+      <span style="flex:1;">
+        <strong>NF ${nf.nNF}</strong> — ${nf.xNome}
+        <span style="color:#6c757d; font-size:0.85em;"> | ${nf.tipo ?? "-"}</span>
+      </span>
+      <span style="color: ${nf.direcao === "Saída" ? "#0d6efd" : "#dc3545"}; font-weight:600;">
+        ${nf.direcao === "Saída" ? "↑" : "↓"} ${nf.direcao}
+      </span>
+      <span>${
+        nf.valor_total
+          ? nf.valor_total.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            })
+          : "-"
+      }</span>
+      <span style="color: ${nf.status_pagamento === "Paga" ? "#198754" : "#dc3545"}; font-weight:600;">
+        ${nf.status_pagamento ?? "-"}
+      </span>
+      <a href="../pages/editarNF.html?id=${nf.id}" target="_blank"
+        style="color:#0d6efd; text-decoration:none;">✏️</a>
+    `;
+    listaNfsCotacao.appendChild(div);
+  });
 }
 
 /* ─── ON LOAD ─── */

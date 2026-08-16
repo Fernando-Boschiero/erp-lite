@@ -185,19 +185,33 @@
           <div id="pedidos-vinculados" style="margin-top: 12px"></div>
         </div>
 
-        <!-- VÍNCULO À COTAÇÃO (future - shown but disabled) -->
+        <!-- VÍNCULO À COTAÇÃO (conditional) -->
         <div id="vinculo-cotacao" style="display: none">
           <h2>VÍNCULO À COTAÇÃO</h2>
           <hr />
           <div class="container-multiple-inputs">
             <div class="input-group">
-              <label>COTAÇÃO</label>
-              <input
-                type="text"
-                readonly
-                placeholder="Funcionalidade disponível em breve" />
+              <label for="cotacaoSelect">ADICIONAR COTAÇÃO</label>
+              <select id="cotacaoSelect">
+                <option value="">Selecione a cotação...</option>
+              </select>
+              <button
+                type="button"
+                id="btn-adicionar-cotacao"
+                style="
+                  margin-top: 8px;
+                  background: #1a5c35;
+                  color: white;
+                  border: none;
+                  border-radius: 4px;
+                  padding: 6px 14px;
+                  cursor: pointer;
+                ">
+                + ADICIONAR
+              </button>
             </div>
           </div>
+          <div id="cotacoes-vinculadas" style="margin-top: 12px"></div>
         </div>
 
         <!-- ITENS DA NF -->
@@ -238,7 +252,7 @@
         </table>
 
         <!-- TOTAL -->
-        <div class="total_geral">
+        <div class="total_geral total-geral-cadastroNF">
           <span>VALOR TOTAL DA NF</span>
           <span id="total-nf">R$ -</span>
         </div>

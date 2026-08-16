@@ -250,6 +250,18 @@ form select {
   width: 50%;
 }
 
+.total-geral-cadastroNF {
+  margin: 5mm 0 5mm 0;
+  color: var(--color-primary);
+  border: 0.2mm solid var(--color-primary);
+  background-color: var(--color-secondary);
+  border-radius: 1px;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 /* CSS FOR THE TABLE */
 
 .hr-arquivos {
