@@ -565,38 +565,39 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
       const result = db
         .prepare(
           `
-  INSERT INTO cotacoes (
+INSERT INTO cotacoes (
   num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
   objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
   prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
   condicoes_gerais, comprador, comprador_email, comprador_telefone,
   instalacao, frete,
   status, revisao
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', ?)
 `,
         )
         .run(
-          num_cotacao,
-          data_cotacao,
-          cliente,
-          cliente_contato,
-          cliente_email,
-          objetivo,
-          descricao_equipamentos,
-          condicoes_proposta,
-          observacoes,
-          prazo_entrega,
-          data_aceite,
-          data_prevista,
-          cond_pagamento,
-          validade_proposta,
-          moeda,
-          condicoes_gerais,
-          comprador,
-          comprador_email,
-          comprador_telefone,
-          instalacao || "cliente",
-          frete || "cliente",
+          current.num_cotacao,
+          current.data_cotacao,
+          current.cliente,
+          current.cliente_contato,
+          current.cliente_email,
+          current.objetivo,
+          current.descricao_equipamentos,
+          current.condicoes_proposta,
+          current.observacoes,
+          current.prazo_entrega,
+          current.data_aceite,
+          current.data_prevista,
+          current.cond_pagamento,
+          current.validade_proposta,
+          current.moeda,
+          current.condicoes_gerais,
+          current.comprador,
+          current.comprador_email,
+          current.comprador_telefone,
+          current.instalacao || "cliente",
+          current.frete || "cliente",
+          current.revisao + 1,
         );
 
       const novaId = result.lastInsertRowid;
@@ -617,6 +618,34 @@ app.post("/cotacoes/:id/revisao", (req, res) => {
           item.val_unitario,
           item.ipi || 0,
           item.total,
+        );
+      }
+
+      // copy payment conditions to new revision
+      const currentPagamentos = db
+        .prepare(
+          `
+        SELECT * FROM cotacao_pagamentos WHERE cotacao_id = ?
+      `,
+        )
+        .all(req.params.id);
+
+      for (const pag of currentPagamentos) {
+        db.prepare(
+          `
+          INSERT INTO cotacao_pagamentos 
+            (cotacao_id, descricao, percentual, gatilho, dias_apos, data_fixa, valor_projetado, data_projetada, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Projecao')
+        `,
+        ).run(
+          novaId,
+          pag.descricao,
+          pag.percentual,
+          pag.gatilho,
+          pag.dias_apos,
+          pag.data_fixa,
+          pag.valor_projetado,
+          pag.data_projetada,
         );
       }
 
