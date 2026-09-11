@@ -75,6 +75,16 @@
         <hr class="dados-cliente" />
         <div class="full-container">
           <div class="column">
+            <label for="selectClienteCotacao"
+              >SELECIONAR CLIENTE CADASTRADO</label
+            >
+            <select id="selectClienteCotacao">
+              <option value="">Selecione um cliente...</option>
+            </select>
+          </div>
+        </div>
+        <div class="full-container">
+          <div class="column">
             <label for="cliente">CLIENTE</label>
             <input
               type="text"
@@ -288,9 +298,6 @@
               <select id="statusSelect" name="status_select">
                 <option value="Criada">Criada</option>
                 <option value="Em Análise Técnica">Em Análise Técnica</option>
-                <option value="Em Análise Financeira">
-                  Em Análise Financeira
-                </option>
                 <option value="Enviado ao Cliente">Enviado ao Cliente</option>
                 <option value="Aceita">Aceita</option>
                 <option value="Pausada">Pausada</option>

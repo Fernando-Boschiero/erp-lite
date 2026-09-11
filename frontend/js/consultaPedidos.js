@@ -149,10 +149,35 @@ async function renderizarTabela(lista) {
       <td>
         <button class="btn-editar" data-id="${p.id}">✏️ Editar</button>
         <button class="btn-pdf" data-id="${p.id}">📄 PDF</button>
+        <button class="btn-deletar" data-id="${p.id}" data-num="${p.num_pedido}">🗑️ Apagar</button>
       </td>
     `;
     resultadoPedidos.appendChild(tr);
   }
+
+  // delete handlers — add RIGHT HERE, after the loop
+  resultadoPedidos.querySelectorAll(".btn-deletar").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (
+        !confirm(
+          `Tem certeza que deseja excluir o pedido ${btn.dataset.num.toUpperCase()}?`,
+        )
+      )
+        return;
+      const result = await fetch(
+        `http://localhost:3000/pedidos/${btn.dataset.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await result.json();
+      if (!result.ok) {
+        alert(data.error);
+      } else {
+        await buscarPedidos();
+      }
+    });
+  });
 }
 
 function aplicarFiltrosEOrdenacao() {

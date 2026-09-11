@@ -37,8 +37,6 @@ function getStatusColor(status) {
       return "#6c757d";
     case "Em Análise Técnica":
       return "#fd7e14";
-    case "Em Análise Financeira":
-      return "#0d6efd";
     case "Enviado ao Cliente":
       return "#6610f2";
     case "Aceita":
@@ -119,7 +117,7 @@ async function renderizarTabela(lista) {
 
   if (lista.length === 0) {
     resultadoCotacoes.innerHTML = `
-      <tr><td colspan="8">Nenhuma cotação encontrada.</td></tr>
+      <tr><td colspan="9">Nenhuma cotação encontrada.</td></tr>
     `;
     return;
   }
@@ -143,6 +141,7 @@ async function renderizarTabela(lista) {
     tr.innerHTML = `
       <td>${c.num_cotacao.toUpperCase()}</td>
       <td>${c.cliente}</td>
+      <td>${c.objetivo ? c.objetivo.substring(0, 50) + (c.objetivo.length > 50 ? "..." : "") : "-"}</td>
       <td>${dataFormatada}</td>
       <td>
         <span style="
@@ -168,11 +167,36 @@ async function renderizarTabela(lista) {
       <td>${total.toLocaleString("pt-BR", { style: "currency", currency: moedaCotacao })}</td>
         <button class="btn-editar" data-id="${c.id}">✏️ Editar</button>
         <button class="btn-pdf" data-id="${c.id}">📄 PDF</button>
-          <button class="btn-revisoes" data-id="${c.id}" data-num="${c.num_cotacao}">📋 Revisões</button>
+        <button class="btn-revisoes" data-id="${c.id}" data-num="${c.num_cotacao}">📋 Revisões</button>
+        <button class="btn-deletar" data-id="${c.id}" data-num="${c.num_cotacao}">🗑️ Apagar</button>
       </td>
     `;
     resultadoCotacoes.appendChild(tr);
   }
+
+  // delete handlers
+  resultadoCotacoes.querySelectorAll(".btn-deletar").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (
+        !confirm(
+          `Tem certeza que deseja excluir a cotação ${btn.dataset.num.toUpperCase()}?`,
+        )
+      )
+        return;
+      const result = await fetch(
+        `http://localhost:3000/cotacoes/${btn.dataset.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const data = await result.json();
+      if (!result.ok) {
+        alert(data.error);
+      } else {
+        await buscarCotacoes();
+      }
+    });
+  });
 }
 
 function aplicarFiltrosEOrdenacao() {

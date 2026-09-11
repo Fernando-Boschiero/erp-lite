@@ -161,6 +161,149 @@ app.delete("/fornecedores/:id", (req, res) => {
   }
 });
 
+// ─── CLIENTES ───
+
+// GET - fetch all clientes
+app.get("/clientes", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT * FROM clientes ORDER BY razao_social ASC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create new cliente
+app.post("/clientes", (req, res) => {
+  const {
+    razao_social,
+    cnpj,
+    ie,
+    rua,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    telefone,
+    contato,
+    telefone_rep,
+    email,
+  } = req.body;
+  if (!razao_social)
+    return res.status(400).json({ error: "Razão social é obrigatória." });
+  try {
+    const result = db
+      .prepare(
+        `
+      INSERT INTO clientes (razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone, contato, telefone_rep, email)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+      )
+      .run(
+        razao_social,
+        cnpj,
+        ie,
+        rua,
+        bairro,
+        cidade,
+        estado,
+        cep,
+        telefone,
+        contato,
+        telefone_rep,
+        email,
+      );
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    if (err.message.includes("UNIQUE")) {
+      res.status(409).json({ error: "CNPJ já cadastrado." });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// PUT - update cliente
+app.put("/clientes/:id", (req, res) => {
+  const {
+    razao_social,
+    cnpj,
+    ie,
+    rua,
+    bairro,
+    cidade,
+    estado,
+    cep,
+    telefone,
+    contato,
+    telefone_rep,
+    email,
+  } = req.body;
+  try {
+    db.prepare(
+      `
+      UPDATE clientes SET
+        razao_social=?, cnpj=?, ie=?, rua=?, bairro=?, cidade=?, estado=?, cep=?,
+        telefone=?, contato=?, telefone_rep=?, email=?,
+        updated_at=datetime('now')
+      WHERE id=?
+    `,
+    ).run(
+      razao_social,
+      cnpj,
+      ie,
+      rua,
+      bairro,
+      cidade,
+      estado,
+      cep,
+      telefone,
+      contato,
+      telefone_rep,
+      email,
+      req.params.id,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - delete cliente
+app.delete("/clientes/:id", (req, res) => {
+  try {
+    const cliente = db
+      .prepare(`SELECT * FROM clientes WHERE id = ?`)
+      .get(req.params.id);
+    if (!cliente)
+      return res.status(404).json({ error: "Cliente não encontrado." });
+    db.prepare(`DELETE FROM clientes WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH - toggle cliente active status
+app.patch("/clientes/:id/status", (req, res) => {
+  const { is_active } = req.body;
+  try {
+    db.prepare(`UPDATE clientes SET is_active = ? WHERE id = ?`).run(
+      is_active,
+      req.params.id,
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET - fetch all cotações (latest revision only, for listing)
 app.get("/cotacoes", (req, res) => {
   const rows = db
@@ -389,12 +532,7 @@ app.put("/cotacoes/:id", (req, res) => {
     // validate status transition if status changed
     const transicoesPermitidas = {
       Criada: ["Em Análise Técnica", "Cancelada"],
-      "Em Análise Técnica": ["Em Análise Financeira", "Criada", "Cancelada"],
-      "Em Análise Financeira": [
-        "Enviado ao Cliente",
-        "Em Análise Técnica",
-        "Cancelada",
-      ],
+      "Em Análise Técnica": ["Enviado ao Cliente", "Criada", "Cancelada"],
       "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
       Aceita: ["Faturada", "Pausada", "Cancelada"],
       Pausada: ["Aceita", "Cancelada"],
@@ -934,6 +1072,20 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
   .quill-content p { margin-bottom: 2mm; }
   .quill-content ul, .quill-content ol { padding-left: 5mm; margin-bottom: 2mm; }
 
+${
+  !["Enviado ao Cliente", "Aceita", "Pausada", "Faturada"].includes(
+    cotacao.status,
+  )
+    ? `
+body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Ctext x='50%25' y='50%25' font-size='60' font-weight='bold' fill='rgba(200%2C0%2C0%2C0.1)' text-anchor='middle' dominant-baseline='middle' transform='rotate(-45 250 250)'%3EPRELIMINAR%3C/text%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 1000px 1000px;
+}
+`
+    : ""
+}
+
 </style>
       </head>
       <body>
@@ -1246,6 +1398,22 @@ app.get("/cotacoes/:id/notas-fiscais", (req, res) => {
       )
       .all(req.params.id);
     res.json(nfs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - delete a cotação
+app.delete("/cotacoes/:id", (req, res) => {
+  try {
+    const cotacao = db
+      .prepare(`SELECT * FROM cotacoes WHERE id = ?`)
+      .get(req.params.id);
+    if (!cotacao)
+      return res.status(404).json({ error: "Cotação não encontrada." });
+
+    db.prepare(`DELETE FROM cotacoes WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1751,6 +1919,22 @@ app.post("/pedidos", (req, res) => {
     } else {
       res.status(500).json({ error: err.message });
     }
+  }
+});
+
+// DELETE - delete a pedido
+app.delete("/pedidos/:id", (req, res) => {
+  try {
+    const pedido = db
+      .prepare(`SELECT * FROM pedidos WHERE id = ?`)
+      .get(req.params.id);
+    if (!pedido)
+      return res.status(404).json({ error: "Pedido não encontrado." });
+
+    db.prepare(`DELETE FROM pedidos WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -3299,7 +3483,8 @@ app.get("/relatorios/pagamentos", (req, res) => {
         nf.tipo,
         nf.direcao,
         p.num_pedido,
-        p.aplicacao
+        p.aplicacao,
+        'duplicata' as tipo_registro
       FROM nf_duplicatas d
       JOIN notas_fiscais nf ON nf.id = d.nf_id
       LEFT JOIN pedidos p ON p.id = nf.pedido_id
@@ -3309,21 +3494,71 @@ app.get("/relatorios/pagamentos", (req, res) => {
       )
       .all(...params);
 
+    // fetch projeções if direction is not Entrada only
+    let projecoes = [];
+    if (!direcao || direcao === "Todos" || direcao === "Saída") {
+      let projecaoWhere = `WHERE c.status = 'Aceita' AND cp.data_projetada >= ? AND cp.data_projetada <= ?`;
+      const projecaoParams = [dataInicio, dataFim];
+
+      if (status && status === "Aberta") {
+        projecaoWhere += ` AND cp.status = 'Projecao'`;
+      } else if (status && status === "Paga") {
+        projecaoWhere += ` AND cp.status = 'Paga'`;
+      }
+
+      projecoes = db
+        .prepare(
+          `
+        SELECT
+          cp.id,
+          cp.descricao as nDup,
+          cp.data_projetada as dVenc,
+          cp.valor_projetado as vDup,
+          cp.status,
+          cp.data_pagamento,
+          null as nf_id,
+          c.num_cotacao as nNF,
+          c.cliente as xNome,
+          'Projeção de Cotação' as tipo,
+          'Saída' as direcao,
+          null as num_pedido,
+          null as aplicacao,
+          'projecao' as tipo_registro
+        FROM cotacao_pagamentos cp
+        JOIN cotacoes c ON c.id = cp.cotacao_id
+        ${projecaoWhere}
+        ORDER BY cp.data_projetada ASC
+      `,
+        )
+        .all(...projecaoParams);
+    }
+
+    // combine and sort by date
+    const allRows = [...rows, ...projecoes].sort((a, b) =>
+      a.dVenc.localeCompare(b.dVenc),
+    );
+
     // summary totals
-    const totalAberto = rows
-      .filter((r) => r.status === "Aberta")
+    const totalAberto = allRows
+      .filter((r) => r.status === "Aberta" || r.status === "Projecao")
       .reduce((s, r) => s + r.vDup, 0);
-    const totalPago = rows
+    const totalPago = allRows
       .filter((r) => r.status === "Paga")
       .reduce((s, r) => s + r.vDup, 0);
-    const totalEntradas = rows
+    const totalEntradas = allRows
       .filter((r) => r.direcao === "Saída")
       .reduce((s, r) => s + r.vDup, 0);
-    const totalSaidas = rows
+    const totalSaidas = allRows
       .filter((r) => r.direcao === "Entrada")
       .reduce((s, r) => s + r.vDup, 0);
 
-    res.json({ rows, totalAberto, totalPago, totalEntradas, totalSaidas });
+    res.json({
+      rows: allRows,
+      totalAberto,
+      totalPago,
+      totalEntradas,
+      totalSaidas,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -368,4 +368,28 @@ db.prepare(
 `,
 ).run();
 
+// CLIENTES
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    razao_social TEXT NOT NULL,
+    cnpj TEXT UNIQUE,
+    ie TEXT,
+    rua TEXT,
+    bairro TEXT,
+    cidade TEXT,
+    estado TEXT,
+    cep TEXT,
+    telefone TEXT,
+    contato TEXT,
+    telefone_rep TEXT,
+    email TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )
+`,
+).run();
+
 module.exports = db;

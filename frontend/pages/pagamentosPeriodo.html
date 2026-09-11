@@ -13,7 +13,35 @@
   </head>
   <body>
     <div class="relatorio-container">
-      <h1>PAGAMENTOS POR PERÍODO</h1>
+      <h1>
+        PAGAMENTOS POR PERÍODO
+        <span class="info-tooltip">
+          <i class="info-icon">i</i>
+          <span class="info-text">
+            <strong>📋 Pagamentos por Período — Como interpretar</strong
+            ><br /><br />
+
+            Esta página lista individualmente todas as duplicatas (parcelas) com
+            vencimento no período selecionado, permitindo uma visão detalhada de
+            cada pagamento ou recebimento.<br /><br />
+
+            <strong>Filtros disponíveis:</strong><br />
+            • <strong>Status:</strong> Filtre por duplicatas em aberto, pagas ou
+            todas.<br />
+            • <strong>Direção:</strong> Filtre por saídas (custos a pagar) ou
+            entradas (valores a receber).<br /><br />
+
+            <strong>Indicadores de vencimento:</strong> Duplicatas em aberto com
+            vencimento passado são destacadas em vermelho com o símbolo ⚠️.<br /><br />
+
+            <strong>Fontes:</strong> As informações são provenientes de notas
+            fiscais de fornecedores, notas fiscais emitidas pela Veikon,
+            lançamentos manuais cadastrados no sistema e projeções de pagamento
+            de cotações aprovadas por clientes. Projeções aparecem com fundo
+            verde claro e são identificadas como "Projeção" na coluna de status.
+          </span>
+        </span>
+      </h1>
 
       <!-- FILTERS -->
       <div class="relatorio-filters">
@@ -26,6 +54,7 @@
           <option value="Todos">Todos</option>
           <option value="Aberta">Em Aberto</option>
           <option value="Paga">Pagos</option>
+          <option value="Projecao">Projeções</option>
         </select>
         <label>Direção:</label>
         <select id="filtroDirecao">

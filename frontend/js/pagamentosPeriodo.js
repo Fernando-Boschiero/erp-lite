@@ -72,20 +72,31 @@ async function carregarPagamentos() {
 
   data.rows.forEach((row, i) => {
     const isVencida =
-      row.status === "Aberta" && new Date(row.dVenc + "T00:00:00") < hoje;
+      (row.status === "Aberta" || row.status === "Projecao") &&
+      new Date(row.dVenc + "T00:00:00") < hoje;
     const isSaida = row.direcao === "Saída";
+    const isProjecao = row.tipo_registro === "projecao";
 
     const tr = document.createElement("tr");
-    tr.style.background = i % 2 === 0 ? "#f8f9fa" : "white";
+    tr.style.background = isProjecao
+      ? "#f0fff4"
+      : i % 2 === 0
+        ? "#f8f9fa"
+        : "white";
+
     tr.innerHTML = `
       <td class="td-relatorio" style="color: ${isVencida ? "#dc3545" : "inherit"}; font-weight: ${isVencida ? "600" : "normal"};">
         ${formatarData(row.dVenc)}${isVencida ? " ⚠️" : ""}
       </td>
       <td class="td-relatorio">
-        <a href="../pages/editarNF.html?id=${row.nf_id}" target="_blank"
-          style="color: #0d6efd; text-decoration: none;">
-          ${row.nNF && !row.nNF.startsWith("MANUAL-") ? row.nNF : "Manual"}
-        </a>
+        ${
+          isProjecao
+            ? `<span style="color:#1a5c35; font-style:italic;">COT ${row.nNF}</span>`
+            : `<a href="../pages/editarNF.html?id=${row.nf_id}" target="_blank"
+              style="color: #0d6efd; text-decoration: none;">
+              ${row.nNF && !row.nNF.startsWith("MANUAL-") ? row.nNF : "Manual"}
+            </a>`
+        }
       </td>
       <td class="td-relatorio">${row.xNome ?? "-"}</td>
       <td class="td-relatorio">${row.tipo ?? "-"}</td>
@@ -98,7 +109,7 @@ async function carregarPagamentos() {
       <td class="td-relatorio ${isSaida ? "positive" : "negative"}">${formatBRL(row.vDup)}</td>
       <td class="td-relatorio">
         <span style="color: ${row.status === "Paga" ? "#198754" : isVencida ? "#dc3545" : "#fd7e14"}; font-weight: 600;">
-          ${row.status}
+          ${isProjecao ? (row.status === "Paga" ? "Paga" : "Projeção") : row.status}
         </span>
       </td>
       <td class="td-relatorio">${formatarData(row.data_pagamento)}</td>

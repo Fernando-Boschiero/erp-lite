@@ -60,6 +60,7 @@ const quillDescricao = new Quill("#editor-descricao", {
       ["bold", "italic", "underline"],
       [{ list: "ordered" }, { list: "bullet" }],
       ["image", "link"],
+      [{ align: [] }],
       ["clean"],
     ],
   },
@@ -71,6 +72,7 @@ const quillCondicoes = new Quill("#editor-condicoes", {
     toolbar: [
       ["bold", "italic", "underline"],
       [{ list: "ordered" }, { list: "bullet" }],
+      [{ align: [] }],
       ["clean"],
     ],
   },
@@ -82,10 +84,38 @@ const quillCondicoesGerais = new Quill("#editor-condicoes-gerais", {
     toolbar: [
       ["bold", "italic", "underline"],
       [{ list: "ordered" }, { list: "bullet" }],
+      [{ align: [] }],
       ["clean"],
     ],
   },
 });
+
+/* ─── CLIENTES ─── */
+let clientes = [];
+const selectClienteCotacao = document.getElementById("selectClienteCotacao");
+
+async function carregarClientesCotacao() {
+  const res = await fetch("http://localhost:3000/clientes");
+  clientes = await res.json();
+  clientes.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = c.id;
+    option.textContent = c.razao_social;
+    if (selectClienteCotacao) selectClienteCotacao.appendChild(option);
+  });
+}
+
+if (selectClienteCotacao) {
+  selectClienteCotacao.addEventListener("change", () => {
+    const cliente = clientes.find((c) => c.id == selectClienteCotacao.value);
+    if (!cliente) return;
+
+    // auto-fill fields
+    document.getElementById("cliente").value = cliente.razao_social ?? "";
+    document.getElementById("clienteContato").value = cliente.contato ?? "";
+    document.getElementById("clienteEmail").value = cliente.email ?? "";
+  });
+}
 
 /* ─── BOILERPLATE - condições gerais de venda ─── */
 // Pre-fills the condições gerais editor with standard legal text
@@ -697,12 +727,7 @@ let currentCotacaoId = null;
 function atualizarOpcoesStatus(statusAtual) {
   const transicoesPermitidas = {
     Criada: ["Em Análise Técnica", "Cancelada"],
-    "Em Análise Técnica": ["Em Análise Financeira", "Criada", "Cancelada"],
-    "Em Análise Financeira": [
-      "Enviado ao Cliente",
-      "Em Análise Técnica",
-      "Cancelada",
-    ],
+    "Em Análise Técnica": ["Enviado ao Cliente", "Criada", "Cancelada"],
     "Enviado ao Cliente": ["Aceita", "Recusada", "Cancelada"],
     Aceita: ["Faturada", "Pausada", "Cancelada"],
     Pausada: ["Aceita", "Cancelada"],
@@ -1133,4 +1158,5 @@ if (btnImprimir) {
   });
 }
 
+carregarClientesCotacao();
 calcularDataPrevistaCotacao();

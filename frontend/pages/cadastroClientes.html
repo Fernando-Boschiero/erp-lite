@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Cadastrar / Atualizar Cliente</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>CADASTRAR / ATUALIZAR CLIENTE</h1>
+
+      <!-- CADASTRAR -->
+      <h2>CADASTRAR NOVO CLIENTE</h2>
+      <hr />
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="razaoSocial">RAZÃO SOCIAL</label>
+          <input type="text" id="razaoSocial" placeholder="Razão Social" />
+        </div>
+        <div class="input-group">
+          <label for="cnpj">CNPJ</label>
+          <input type="text" id="cnpj" placeholder="00.000.000/0000-00" />
+        </div>
+        <div class="input-group">
+          <label for="ie">IE</label>
+          <input type="text" id="ie" placeholder="Inscrição Estadual" />
+        </div>
+      </div>
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="rua">RUA</label>
+          <input type="text" id="rua" placeholder="Rua" />
+        </div>
+        <div class="input-group">
+          <label for="bairro">BAIRRO</label>
+          <input type="text" id="bairro" placeholder="Bairro" />
+        </div>
+        <div class="input-group">
+          <label for="cidade">CIDADE</label>
+          <input type="text" id="cidade" placeholder="Cidade" />
+        </div>
+        <div class="input-group">
+          <label for="estado">ESTADO</label>
+          <input type="text" id="estado" placeholder="UF" />
+        </div>
+        <div class="input-group">
+          <label for="cep">CEP</label>
+          <input type="text" id="cep" placeholder="00000-000" />
+        </div>
+      </div>
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="telefone">TELEFONE</label>
+          <input type="text" id="telefone" placeholder="(00) 00000-0000" />
+        </div>
+        <div class="input-group">
+          <label for="contato">CONTATO</label>
+          <input type="text" id="contato" placeholder="Nome do contato" />
+        </div>
+        <div class="input-group">
+          <label for="telefoneRep">TELEFONE REP.</label>
+          <input type="text" id="telefoneRep" placeholder="(00) 00000-0000" />
+        </div>
+        <div class="input-group">
+          <label for="emailCliente">E-MAIL</label>
+          <input
+            type="email"
+            id="emailCliente"
+            placeholder="email@cliente.com.br" />
+        </div>
+      </div>
+      <button type="button" id="btn-cadastrar">CADASTRAR</button>
+
+      <br /><br />
+
+      <!-- ATUALIZAR -->
+      <h2>ATUALIZAR CLIENTE</h2>
+      <hr />
+      <div class="input-group">
+        <label for="selectCliente">SELECIONAR CLIENTE</label>
+        <select id="selectCliente">
+          <option value="">Selecione um cliente...</option>
+        </select>
+      </div>
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="razaoSocialUpdate">RAZÃO SOCIAL</label>
+          <input type="text" id="razaoSocialUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="cnpjUpdate">CNPJ</label>
+          <input type="text" id="cnpjUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="ieUpdate">IE</label>
+          <input type="text" id="ieUpdate" />
+        </div>
+      </div>
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="ruaUpdate">RUA</label>
+          <input type="text" id="ruaUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="bairroUpdate">BAIRRO</label>
+          <input type="text" id="bairroUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="cidadeUpdate">CIDADE</label>
+          <input type="text" id="cidadeUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="estadoUpdate">ESTADO</label>
+          <input type="text" id="estadoUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="cepUpdate">CEP</label>
+          <input type="text" id="cepUpdate" />
+        </div>
+      </div>
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="telefoneUpdate">TELEFONE</label>
+          <input type="text" id="telefoneUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="contatoUpdate">CONTATO</label>
+          <input type="text" id="contatoUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="telefoneRepUpdate">TELEFONE REP.</label>
+          <input type="text" id="telefoneRepUpdate" />
+        </div>
+        <div class="input-group">
+          <label for="emailClienteUpdate">E-MAIL</label>
+          <input type="email" id="emailClienteUpdate" />
+        </div>
+      </div>
+      <button type="button" id="btn-atualizar">ATUALIZAR</button>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/cadastroClientes.js"></script>
+  </body>
+</html>

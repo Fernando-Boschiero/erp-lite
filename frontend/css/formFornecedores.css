@@ -247,7 +247,7 @@ form select {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  width: 50%;
+  width: 48%;
 }
 
 .total-geral-cadastroNF {
@@ -382,6 +382,11 @@ button:hover {
 
 .no-print {
   margin-top: 5px;
+}
+
+#btn-atualizar,
+#btn-cadastrar {
+  margin: 10px 0px;
 }
 
 #select-fornecedor-container {
