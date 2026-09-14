@@ -1072,6 +1072,11 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
   .quill-content p { margin-bottom: 2mm; }
   .quill-content ul, .quill-content ol { padding-left: 5mm; margin-bottom: 2mm; }
 
+  .ql-align-justify { text-align: justify; }
+.ql-align-center { text-align: center; }
+.ql-align-right { text-align: right; }
+.ql-align-left { text-align: left; }
+
 ${
   !["Enviado ao Cliente", "Aceita", "Pausada", "Faturada"].includes(
     cotacao.status,
