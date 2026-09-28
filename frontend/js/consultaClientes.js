@@ -43,26 +43,29 @@ function renderizarTabela(lista) {
   lista.forEach((c) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${c.razao_social ?? "-"}</td>
-      <td>${formatCNPJ(c.cnpj)}</td>
-      <td>${c.ie ?? "-"}</td>
-      <td>${c.rua ?? "-"}</td>
-      <td>${c.bairro ?? "-"}</td>
-      <td>${c.cidade ?? "-"}</td>
-      <td>${c.estado ?? "-"}</td>
-      <td>${c.cep ?? "-"}</td>
-      <td>${c.telefone ?? "-"}</td>
-      <td>${c.contato ?? "-"}</td>
-      <td>${c.telefone_rep ?? "-"}</td>
-      <td>${c.email ?? "-"}</td>
-      <td>
-        <select class="toggle-ativo" data-id="${c.id}">
-          <option value="1" ${c.is_active == 1 ? "selected" : ""}>Ativo</option>
-          <option value="0" ${c.is_active == 0 ? "selected" : ""}>Inativo</option>
-        </select>
-      </td>
-      <td><span class="delete-icon" data-id="${c.id}">🗑️</span></td>
-    `;
+  <td>${c.razao_social ?? "-"}</td>
+  <td>${c.nome_fantasia ?? "-"}</td>
+  <td>${formatCNPJ(c.cnpj)}</td>
+  <td>${c.sigla ?? "-"}</td>
+  <td>${c.ie ?? "-"}</td>
+  <td>${c.rua ?? "-"}</td>
+  <td>${c.bairro ?? "-"}</td>
+  <td>${c.cidade ?? "-"}</td>
+  <td>${c.estado ?? "-"}</td>
+  <td>${c.cep ?? "-"}</td>
+  <td>${c.pais ?? "-"}</td>
+  <td>${c.telefone ?? "-"}</td>
+  <td>${c.contato ?? "-"}</td>
+  <td>${c.telefone_rep ?? "-"}</td>
+  <td>${c.email ?? "-"}</td>
+  <td>
+    <select class="toggle-ativo" data-id="${c.id}">
+      <option value="1" ${c.is_active == 1 ? "selected" : ""}>Ativo</option>
+      <option value="0" ${c.is_active == 0 ? "selected" : ""}>Inativo</option>
+    </select>
+  </td>
+  <td><span class="delete-icon" data-id="${c.id}">🗑️</span></td>
+`;
     resultadoClientes.appendChild(tr);
   });
 

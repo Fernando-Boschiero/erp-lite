@@ -116,6 +116,7 @@ form select {
 
 .full-container {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   margin-top: 5mm;
@@ -184,6 +185,14 @@ form select {
 
 .container-multiple-inputs > .input-group {
   flex: 1;
+}
+
+.half-flex {
+  flex: 0.5;
+}
+
+.no-wrap {
+  flex-wrap: nowrap;
 }
 
 .container-multiple-inputs {
@@ -461,6 +470,17 @@ button:hover {
 .status-aberta {
   color: #dc3545;
   font-weight: bold;
+}
+
+.btn-editar,
+.btn-pdf,
+.btn-revisoes,
+.btn-deletar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 4px;
 }
 
 /* CSS FOR CADASTRO DE NOTA FISCAL */

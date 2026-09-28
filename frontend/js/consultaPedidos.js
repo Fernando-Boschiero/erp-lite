@@ -147,9 +147,9 @@ async function renderizarTabela(lista) {
       </td>
       <td>${total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
       <td>
-        <button class="btn-editar" data-id="${p.id}">✏️ Editar</button>
-        <button class="btn-pdf" data-id="${p.id}">📄 PDF</button>
-        <button class="btn-deletar" data-id="${p.id}" data-num="${p.num_pedido}">🗑️ Apagar</button>
+        <button class="btn-editar" data-id="${p.id}" title="Editar Pedido">✏️</button>
+        <button class="btn-pdf" data-id="${p.id}" title="Gerar PDF">📄</button>
+        <button class="btn-deletar" data-id="${p.id}" data-num="${p.num_pedido}" title="Excluir Pedido">🗑️</button>
       </td>
     `;
     resultadoPedidos.appendChild(tr);

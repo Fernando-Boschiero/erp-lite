@@ -29,6 +29,9 @@ if (selectCliente) {
     selectedClienteId = cliente.id;
     document.getElementById("razaoSocialUpdate").value =
       cliente.razao_social ?? "";
+    document.getElementById("siglaUpdate").value = cliente.sigla ?? "";
+    document.getElementById("nomeFantasiaUpdate").value =
+      cliente.nome_fantasia ?? "";
     document.getElementById("cnpjUpdate").value =
       formatCNPJ(cliente.cnpj) ?? "";
     document.getElementById("ieUpdate").value = cliente.ie ?? "";
@@ -37,6 +40,7 @@ if (selectCliente) {
     document.getElementById("cidadeUpdate").value = cliente.cidade ?? "";
     document.getElementById("estadoUpdate").value = cliente.estado ?? "";
     document.getElementById("cepUpdate").value = cliente.cep ?? "";
+    document.getElementById("paisUpdate").value = cliente.pais ?? "";
     document.getElementById("telefoneUpdate").value = cliente.telefone ?? "";
     document.getElementById("contatoUpdate").value = cliente.contato ?? "";
     document.getElementById("telefoneRepUpdate").value =
@@ -56,6 +60,8 @@ if (btnCadastrar) {
 
     const payload = {
       razao_social: razaoSocial,
+      sigla: document.getElementById("sigla").value,
+      nome_fantasia: document.getElementById("nomeFantasia").value,
       cnpj: document.getElementById("cnpj").value,
       ie: document.getElementById("ie").value,
       rua: document.getElementById("rua").value,
@@ -63,6 +69,7 @@ if (btnCadastrar) {
       cidade: document.getElementById("cidade").value,
       estado: document.getElementById("estado").value,
       cep: document.getElementById("cep").value,
+      pais: document.getElementById("pais").value,
       telefone: document.getElementById("telefone").value,
       contato: document.getElementById("contato").value,
       telefone_rep: document.getElementById("telefoneRep").value,
@@ -90,6 +97,7 @@ if (btnCadastrar) {
         "cidade",
         "estado",
         "cep",
+        "pais",
         "telefone",
         "contato",
         "telefoneRep",
@@ -111,6 +119,8 @@ if (btnAtualizar) {
 
     const payload = {
       razao_social: document.getElementById("razaoSocialUpdate").value,
+      sigla: document.getElementById("siglaUpdate").value,
+      nome_fantasia: document.getElementById("nomeFantasiaUpdate").value,
       cnpj: document.getElementById("cnpjUpdate").value,
       ie: document.getElementById("ieUpdate").value,
       rua: document.getElementById("ruaUpdate").value,
@@ -118,6 +128,7 @@ if (btnAtualizar) {
       cidade: document.getElementById("cidadeUpdate").value,
       estado: document.getElementById("estadoUpdate").value,
       cep: document.getElementById("cepUpdate").value,
+      pais: document.getElementById("paisUpdate").value,
       telefone: document.getElementById("telefoneUpdate").value,
       contato: document.getElementById("contatoUpdate").value,
       telefone_rep: document.getElementById("telefoneRepUpdate").value,

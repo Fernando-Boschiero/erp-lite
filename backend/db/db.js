@@ -374,6 +374,8 @@ db.prepare(
   CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     razao_social TEXT NOT NULL,
+    sigla TEXT,
+nome_fantasia TEXT,
     cnpj TEXT UNIQUE,
     ie TEXT,
     rua TEXT,
@@ -381,6 +383,7 @@ db.prepare(
     cidade TEXT,
     estado TEXT,
     cep TEXT,
+    pais TEXT,
     telefone TEXT,
     contato TEXT,
     telefone_rep TEXT,
@@ -391,5 +394,54 @@ db.prepare(
   )
 `,
 ).run();
+
+// CONTATOS
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS contatos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT,
+    telefone TEXT,
+    cliente_id INTEGER,
+    unidade TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL
+  )
+`,
+).run();
+
+// COTACAO_CONTATOS - junction table for multiple contacts per cotação
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS cotacao_contatos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cotacao_id INTEGER NOT NULL,
+    contato_id INTEGER NOT NULL,
+    FOREIGN KEY (cotacao_id) REFERENCES cotacoes(id) ON DELETE CASCADE,
+    FOREIGN KEY (contato_id) REFERENCES contatos(id) ON DELETE CASCADE,
+    UNIQUE(cotacao_id, contato_id)
+  )
+`,
+).run();
+
+// COTACAO_COUNTER - global increment counter for cotação numbering
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS cotacao_counter (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    ultimo_numero INTEGER DEFAULT 0
+  )
+`,
+).run();
+
+// insert initial row if not exists
+const counter = db.prepare(`SELECT * FROM cotacao_counter WHERE id = 1`).get();
+if (!counter) {
+  db.prepare(
+    `INSERT INTO cotacao_counter (id, ultimo_numero) VALUES (1, 0)`,
+  ).run();
+}
 
 module.exports = db;

@@ -110,45 +110,147 @@ if (selectClienteCotacao) {
     const cliente = clientes.find((c) => c.id == selectClienteCotacao.value);
     if (!cliente) return;
 
-    // auto-fill fields
+    // auto-fill all client fields
     document.getElementById("cliente").value = cliente.razao_social ?? "";
-    document.getElementById("clienteContato").value = cliente.contato ?? "";
-    document.getElementById("clienteEmail").value = cliente.email ?? "";
+    document.getElementById("clienteCnpj").value = cliente.cnpj ?? "";
+    document.getElementById("clienteRua").value = cliente.rua ?? "";
+    document.getElementById("clienteBairro").value = cliente.bairro ?? "";
+    document.getElementById("clienteCidade").value = cliente.cidade ?? "";
+    document.getElementById("clienteEstado").value = cliente.estado ?? "";
+    document.getElementById("clienteCep").value = cliente.cep ?? "";
+    document.getElementById("clientePais").value = cliente.pais ?? "";
+
+    // store sigla for cotação number generation
+    selectClienteCotacao.dataset.sigla = cliente.sigla ?? "";
+
+    if (!currentCotacaoId) {
+      document.getElementById("numCotacao").value = "";
+    }
   });
+}
+
+/* ─── CONTATOS DA COTAÇÃO ─── */
+let contatos = [];
+let contatosSelecionados = [];
+
+const selectContatoCotacao = document.getElementById("selectContatoCotacao");
+const btnAdicionarContato = document.getElementById("btn-adicionar-contato");
+const contatosVinculadosDiv = document.getElementById("contatos-vinculados");
+
+async function carregarContatosCotacao() {
+  const res = await fetch("http://localhost:3000/contatos");
+  contatos = await res.json();
+  contatos.forEach((c) => {
+    const option = document.createElement("option");
+    option.value = c.id;
+    option.textContent = `${c.nome}${c.cliente_nome ? ` — ${c.cliente_nome}` : ""}${c.unidade ? ` (${c.unidade})` : ""}`;
+    if (selectContatoCotacao) selectContatoCotacao.appendChild(option);
+  });
+}
+
+function renderContatosSelecionados() {
+  if (!contatosVinculadosDiv) return;
+  contatosVinculadosDiv.innerHTML = "";
+
+  if (contatosSelecionados.length === 0) {
+    contatosVinculadosDiv.innerHTML = `<p style="color:#6c757d;">Nenhum contato vinculado.</p>`;
+    return;
+  }
+
+  contatosSelecionados.forEach((c) => {
+    const div = document.createElement("div");
+    div.style.cssText =
+      "display:flex; align-items:center; gap:12px; padding:8px; border:1px solid #dee2e6; border-radius:4px; margin-bottom:6px; background:#f8f9fa;";
+    div.innerHTML = `
+      <span style="flex:1;">
+        <strong>${c.nome}</strong>
+        ${c.cliente_nome ? `— ${c.cliente_nome}` : ""}
+        ${c.unidade ? `(${c.unidade})` : ""}
+        ${c.email ? `| ${c.email}` : ""}
+        ${c.telefone ? `| ${c.telefone}` : ""}
+      </span>
+      <button type="button" class="btn-remover-contato" data-id="${c.id}"
+        style="background:none; border:none; cursor:pointer; color:#dc3545;">✕</button>
+    `;
+    contatosVinculadosDiv.appendChild(div);
+  });
+
+  contatosVinculadosDiv
+    .querySelectorAll(".btn-remover-contato")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        contatosSelecionados = contatosSelecionados.filter(
+          (c) => c.id != btn.dataset.id,
+        );
+        renderContatosSelecionados();
+      });
+    });
+}
+
+if (btnAdicionarContato) {
+  btnAdicionarContato.addEventListener("click", () => {
+    const contato = contatos.find((c) => c.id == selectContatoCotacao.value);
+    if (!contato) return;
+    if (contatosSelecionados.find((c) => c.id == contato.id)) {
+      alert("Este contato já foi adicionado.");
+      return;
+    }
+    contatosSelecionados.push(contato);
+    selectContatoCotacao.value = "";
+    renderContatosSelecionados();
+  });
+}
+
+async function salvarContatosCotacao(cotacaoId) {
+  await fetch(`http://localhost:3000/cotacoes/${cotacaoId}/contatos`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contato_ids: contatosSelecionados.map((c) => c.id),
+    }),
+  });
+}
+
+async function carregarContatosVinculados(cotacaoId) {
+  const res = await fetch(
+    `http://localhost:3000/cotacoes/${cotacaoId}/contatos`,
+  );
+  const linked = await res.json();
+  contatosSelecionados = linked;
+  renderContatosSelecionados();
 }
 
 /* ─── BOILERPLATE - condições gerais de venda ─── */
 // Pre-fills the condições gerais editor with standard legal text
 const condicoesGeraisBoilerplate = `
-<p><strong>INTRODUÇÃO:</strong> O presente documento tem o propósito de apresentar a Política associada ao fornecimento, crédito, garantia e assuntos relacionados à venda.</p>
-<p><strong>1. CONDIÇÕES GERAIS:</strong> Esta venda está sujeita aos termos e condições especificados neste documento, bem como na proposta, pedido e/ou fatura fornecida pela VEIKON EQUIPAMENTOS E SERVIÇOS LTDA. ("VEIKON ENGENHARIA").</p>
-<p>1.1. Não será aceita qualquer adição ou alteração promovida unilateralmente pelo cliente, de forma que qualquer declaração verbal ou escrita introduzida pelo mesmo não adicionará, alterará ou afetará sob qualquer forma os termos e condições estipulados.</p>
-<p>1.2. Todos os pedidos devem ser transmitidos de maneira formal, através de fax ou e-mail, a fim de evitar erros e transtornos na confecção e entrega do material, estando sujeitos a análise prévia e aceite da VEIKON ENGENHARIA. O pedido deve conter as informações a seguir: Arquivo scaneado da proposta com todas as páginas rubricadas, nome, telefone e carimbo do comprador ou responsável pela solicitação.  endereço de entrega, endereço de cobrança, endereço de faturamento com respectivo CNPJ e I.E, utilização (consumo ou industrialização), Incoterm (CIF, FOB,EXW), transportadora (para quem utiliza), preço, prazo de pagamento negociado e quantidade desejada. O valor de faturamento mínimo é de R$ 250,00 (duzentos e cinquenta reais). Prazo para faturamento a ser negociado em cada caso, sempre mediante aprovação de cadastro.</p>
-<p>1.3. Os preços dos produtos obedecerão à tabela da VEIKON ENGENHARIA, que poderá alterá-los a qualquer tempo desde que avise o cliente durante o prazo de validade da proposta e antes da efetivação do pedido, ficando desde já estabelecido que os preços incluem tributos incidentes sobre a venda, circulação de mercadoria e impostos e/ou tarifas alfandegárias. O custo da embalagem também está incluso nos valores dos produtos e o despacho será feito pela área de transporte após sinalização da produção e a emissão da Nota Fiscal. A menos que especificado de forma diversa na proposta, o frete para entrega em território brasileiro será por conta do cliente.</p>
-<p>1.4. A menos que especificado de forma diversa, o pagamento das faturas referentes aos produtos deverá ser efetuado em moeda corrente brasileira, e a entrega da mercadoria será feita na fábrica da VEIKON ENGENHARIA, localizada na Rua Joana Fabri Thomé, 442, Bairro Claudina, em Vinhedo, Estado de São Paulo, Brasil. A partir da entrega dos produtos para os funcionários e/ou representantes do cliente, este será responsável pelo risco de eventuais danos e/ou perdas referentes aos produtos, ficando a VEIKON ENGENHARIA isenta de qualquer tipo de responsabilidade.</p>
-<p>1.5. O cliente é responsável por todo e qualquer débito não saldado relativo aos produtos recebidos da VEIKON ENGENHARIA independentemente de quaisquer perdas e/ou danos decorrentes de atos ou fatos após a entrega, sendo que os pagamentos deverão ser feitos pelo cliente nos 30 (trinta) dias seguintes à data da aceitação do pedido, a menos que outra forma de pagamento tenha sido especificada na proposta comercial da VEIKON ENGENHARIA.</p>
-<p>1.6. No caso de o cliente atrasar qualquer dos pagamentos devidos à VEIKON ENGENHARIA, será devida multa sobre o valor em atraso, acrescida de juros e correção monetária sobre o mesmo valor, calculados desde a data de vencimento da fatura até a data do efetivo pagamento, tudo devidamente corrigido, sendo que caso a legislação brasileira venha a permitir a cobrança de taxa maior de juros, esta poderá ser aplicada pela VEIKON ENGENHARIA. Clientes com títulos encaminhados a cartório poderão efetuar compras somente mediante liberação do departamento financeiro e com pagamento à vista. Clientes com títulos atrasados não protestados só poderão efetuar compras faturadas mediante aprovação do departamento Financeiro e Diretoria da VEIKON ENGENHARIA.</p>
-<p><strong>2. ACEITE:</strong> O pedido de compra gerado pelo cliente e enviado à VEIKON ENGENHARIA implica aceitação por parte do cliente dos termos e condições previstos no presente documento.</p>
-<p><strong>3. CANCELAMENTO:</strong> Em caso de cancelamento de pedido após início dos processos de fabricação, VEIKON ENGENHARIA cobrará uma indenização de 40% (quarenta por cento) do valor do pedido. Após 4 semanas de aceite do pedido, será cobrado a taxa de 100% (cem por cento) da ordem de compra.</p>
-<p><strong>4. GARANTIA:</strong> A todos os produtos novos fabricados pela VEIKON ENGENHARIA é dada uma garantia contra defeitos dos materiais ou de fabricação pelo período de 1 (um) ano contado a partir da data de entrega dos produtos, sendo que no caso de ocorrência dos referidos defeitos a VEIKON ENGENHARIA reparará ou substituirá os produtos defeituosos. No caso de produtos reformados ou recuperados, é dada garantia de 3 (três) meses contados a partir da entrega dos produtos. Em casos onde a presença do técnico VEIKON ENGENHARIA seja necessária para devida avaliação do pleito de garantia, os custos de mobilização/desmobilização, serviço, estadia e alimentação serão pagas pelo cliente.</p>
-<p>4.1. A garantia dada pela VEIKON ENGENHARIA é condicionada a que os produtos permaneçam com o cliente original. A VEIKON ENGENHARIA não fornece garantia aos produtos que não funcionem devido a desgaste natural, instalação incorreta, vandalismo, uso indevido, acidentes decorrentes do processo de produção do cliente, ou fora das especificações técnicas especificados no Manual de Operação do equipamento ou catalogo do componente.</p>
-<p>4.2. O cliente não poderá retornar produtos defeituosos sem a aprovação prévia por escrito da VEIKON ENGENHARIA.</p>
-<p>4.3. Os termos do presente instrumento passarão a ser aplicados aos produtos que vierem a ser adquiridos da VEIKON ENGENHARIA a partir da presente data, sendo que qualquer outro acordo anterior com o cliente, que estabeleça disposições diversas das aqui dispostas sobre garantias, não será aplicado aos referidos produtos.</p>
-<p>4.4. A VEIKON ENGENHARIA não é responsável por eventuais danos, acidentes e/ou prejuízos, decorrentes de uso, instalação ou operação inadequados dos produtos vendidos pela VEIKON ENGENHARIA, não sendo responsabilizada por qualquer dano direto ou indireto, inclusive danos morais e lucros cessantes que o cliente ou terceiros vierem a sofrer.</p>
-<p>4.5. Tendo em vista que os produtos da VEIKON ENGENHARIA são produzidos sob encomenda, com base em projetos e/ou especificações fornecidos pelo cliente, a mesma não é responsável por qualquer falha, danos, defeitos, acidentes e/ou prejuízos ocorridos em função do projeto e/ou especificações fornecidos pelo cliente, bem como por eventuais inadequações do produto às legislações específicas aplicáveis.
+<p class="ql-align-justify"><strong>INTRODUÇÃO:</strong> O presente documento tem o propósito de apresentar a Política associada ao fornecimento, crédito, garantia e assuntos relacionados à venda.</p>
+<p class="ql-align-justify"><strong>1. CONDIÇÕES GERAIS:</strong> Esta venda está sujeita aos termos e condições especificados neste documento, bem como na proposta, pedido e/ou fatura fornecida pela VEIKON EQUIPAMENTOS E SERVIÇOS LTDA. ("VEIKON ENGENHARIA").</p>
+<p class="ql-align-justify">1.1. Não será aceita qualquer adição ou alteração promovida unilateralmente pelo cliente, de forma que qualquer declaração verbal ou escrita introduzida pelo mesmo não adicionará, alterará ou afetará sob qualquer forma os termos e condições estipulados.</p>
+<p class="ql-align-justify">1.2. Todos os pedidos devem ser transmitidos de maneira formal, através de fax ou e-mail, a fim de evitar erros e transtornos na confecção e entrega do material, estando sujeitos a análise prévia e aceite da VEIKON ENGENHARIA. O pedido deve conter as informações a seguir: Arquivo scaneado da proposta com todas as páginas rubricadas, nome, telefone e carimbo do comprador ou responsável pela solicitação.  endereço de entrega, endereço de cobrança, endereço de faturamento com respectivo CNPJ e I.E, utilização (consumo ou industrialização), Incoterm (CIF, FOB,EXW), transportadora (para quem utiliza), preço, prazo de pagamento negociado e quantidade desejada. O valor de faturamento mínimo é de R$ 250,00 (duzentos e cinquenta reais). Prazo para faturamento a ser negociado em cada caso, sempre mediante aprovação de cadastro.</p>
+<p class="ql-align-justify">1.3. Os preços dos produtos obedecerão à tabela da VEIKON ENGENHARIA, que poderá alterá-los a qualquer tempo desde que avise o cliente durante o prazo de validade da proposta e antes da efetivação do pedido, ficando desde já estabelecido que os preços incluem tributos incidentes sobre a venda, circulação de mercadoria e impostos e/ou tarifas alfandegárias. O custo da embalagem também está incluso nos valores dos produtos e o despacho será feito pela área de transporte após sinalização da produção e a emissão da Nota Fiscal. A menos que especificado de forma diversa na proposta, o frete para entrega em território brasileiro será por conta do cliente.</p>
+<p class="ql-align-justify">1.4. A menos que especificado de forma diversa, o pagamento das faturas referentes aos produtos deverá ser efetuado em moeda corrente brasileira, e a entrega da mercadoria será feita na fábrica da VEIKON ENGENHARIA, localizada na Rua Joana Fabri Thomé, 442, Bairro Claudina, em Vinhedo, Estado de São Paulo, Brasil. A partir da entrega dos produtos para os funcionários e/ou representantes do cliente, este será responsável pelo risco de eventuais danos e/ou perdas referentes aos produtos, ficando a VEIKON ENGENHARIA isenta de qualquer tipo de responsabilidade.</p>
+<p class="ql-align-justify">1.5. O cliente é responsável por todo e qualquer débito não saldado relativo aos produtos recebidos da VEIKON ENGENHARIA independentemente de quaisquer perdas e/ou danos decorrentes de atos ou fatos após a entrega, sendo que os pagamentos deverão ser feitos pelo cliente nos 30 (trinta) dias seguintes à data da aceitação do pedido, a menos que outra forma de pagamento tenha sido especificada na proposta comercial da VEIKON ENGENHARIA.</p>
+<p class="ql-align-justify">1.6. No caso de o cliente atrasar qualquer dos pagamentos devidos à VEIKON ENGENHARIA, será devida multa sobre o valor em atraso, acrescida de juros e correção monetária sobre o mesmo valor, calculados desde a data de vencimento da fatura até a data do efetivo pagamento, tudo devidamente corrigido, sendo que caso a legislação brasileira venha a permitir a cobrança de taxa maior de juros, esta poderá ser aplicada pela VEIKON ENGENHARIA. Clientes com títulos encaminhados a cartório poderão efetuar compras somente mediante liberação do departamento financeiro e com pagamento à vista. Clientes com títulos atrasados não protestados só poderão efetuar compras faturadas mediante aprovação do departamento Financeiro e Diretoria da VEIKON ENGENHARIA.</p>
+<p class="ql-align-justify"><strong>2. ACEITE:</strong> O pedido de compra gerado pelo cliente e enviado à VEIKON ENGENHARIA implica aceitação por parte do cliente dos termos e condições previstos no presente documento.</p>
+<p class="ql-align-justify"><strong>3. CANCELAMENTO:</strong> Em caso de cancelamento de pedido após início dos processos de fabricação, VEIKON ENGENHARIA cobrará uma indenização de 40% (quarenta por cento) do valor do pedido. Após 4 semanas de aceite do pedido, será cobrado a taxa de 100% (cem por cento) da ordem de compra.</p>
+<p class="ql-align-justify"><strong>4. GARANTIA:</strong> A todos os produtos novos fabricados pela VEIKON ENGENHARIA é dada uma garantia contra defeitos dos materiais ou de fabricação pelo período de 1 (um) ano contado a partir da data de entrega dos produtos, sendo que no caso de ocorrência dos referidos defeitos a VEIKON ENGENHARIA reparará ou substituirá os produtos defeituosos. No caso de produtos reformados ou recuperados, é dada garantia de 3 (três) meses contados a partir da entrega dos produtos. Em casos onde a presença do técnico VEIKON ENGENHARIA seja necessária para devida avaliação do pleito de garantia, os custos de mobilização/desmobilização, serviço, estadia e alimentação serão pagas pelo cliente.</p>
+<p class="ql-align-justify">4.1. A garantia dada pela VEIKON ENGENHARIA é condicionada a que os produtos permaneçam com o cliente original. A VEIKON ENGENHARIA não fornece garantia aos produtos que não funcionem devido a desgaste natural, instalação incorreta, vandalismo, uso indevido, acidentes decorrentes do processo de produção do cliente, ou fora das especificações técnicas especificados no Manual de Operação do equipamento ou catalogo do componente.</p>
+<p class="ql-align-justify">4.2. O cliente não poderá retornar produtos defeituosos sem a aprovação prévia por escrito da VEIKON ENGENHARIA.</p>
+<p class="ql-align-justify">4.3. Os termos do presente instrumento passarão a ser aplicados aos produtos que vierem a ser adquiridos da VEIKON ENGENHARIA a partir da presente data, sendo que qualquer outro acordo anterior com o cliente, que estabeleça disposições diversas das aqui dispostas sobre garantias, não será aplicado aos referidos produtos.</p>
+<p class="ql-align-justify">4.4. A VEIKON ENGENHARIA não é responsável por eventuais danos, acidentes e/ou prejuízos, decorrentes de uso, instalação ou operação inadequados dos produtos vendidos pela VEIKON ENGENHARIA, não sendo responsabilizada por qualquer dano direto ou indireto, inclusive danos morais e lucros cessantes que o cliente ou terceiros vierem a sofrer.</p>
+<p class="ql-align-justify">4.5. Tendo em vista que os produtos da VEIKON ENGENHARIA são produzidos sob encomenda, com base em projetos e/ou especificações fornecidos pelo cliente, a mesma não é responsável por qualquer falha, danos, defeitos, acidentes e/ou prejuízos ocorridos em função do projeto e/ou especificações fornecidos pelo cliente, bem como por eventuais inadequações do produto às legislações específicas aplicáveis.
 
 “TODOS OS CLIENTES E USUÁRIOS DEVEM CONSULTAR AS REGULAMENTAÇÕES E NORMAS DE SEGURANÇA LOCAIS, ESTADUAIS E FEDERAIS, VIGENTES EM SUAS RESPECTIVAS JURISDIÇÕES PARA FINS DE ADEQUAÇÃO DO PROJETO E/OU ESPECIFICAÇÕES, BEM COMO DO USO E APLICAÇÃO DOS PRODUTOS.”
 </p>
-<p><strong>5. LIMITAÇÃO DE RESPONSABILIDADE:</strong> A responsabilidade da VEIKON ENGENHARIA pelos seus produtos é limitada a reparos e/ou substituição de peças, ou não sendo possível fazê-los, ao reembolso total do valor do produto. A VEIKON ENGENHARIA não será responsabilizada ou arcará com qualquer outro tipo de dano ou prejuízo, direto ou indireto, material ou moral, que o cliente ou terceiros venham a sofrer em decorrência de seus produtos.</p>
-<p><strong>6. RETORNO DE MERCADORIAS:</strong> Todos os produtos da VEIKON ENGENHARIA são produzidos sob encomenda, de forma que o retorno de produtos adquiridos com defeito será condicionado à consulta e aprovação prévia pela VEIKON ENGENHARIA quanto a aplicabilidade da Garantia e seguido de uma autorização por escrito da VEIKON ENGENHARIA para retorno de produtos, cujos fretes deverão ser pré-pagos pelo cliente ou em caso de devoluções por defeitos e/ou ajustes em Garantia, por conta da VEIKON ENGENHARIA.</p>
-<p><strong>7. ATRASOS NA ENTREGA DE PRODUTOS:</strong> A VEIKON ENGENHARIA não poderá ser responsabilizada por quaisquer atrasos que tenham resultado de atos, fatos ou circunstâncias que estejam, de forma direta ou indireta, fora de seu controle, inclusive, mas não limitados a, caso fortuito ou força maior, guerra ou emergência nacional, furacão, incêndio, enchente, explosão, não disponibilidade de matéria-prima, falta de energia, controvérsias trabalhistas ou greves, exportação, importação, câmbio de dólar ou qualquer outra regulamentação ou restrição governamental. Fica estabelecido que o cliente não poderá cancelar uma ordem de compra com base em qualquer atraso decorrente de atos, fatos ou circunstâncias, bem como quaisquer outros motivos que não sejam de responsabilidade da VEIKON ENGENHARIA.</p>
-<p>7.1. Não será de responsabilidade da VEIKON ENGENHARIA qualquer dano material, moral e/ou lucro cessante, de natureza material ou moral, que o cliente ou terceiros venham a sofrer devido a atrasos na entrega dos produtos ao cliente.</p>
-<p><strong>8. ALERTA:</strong> A VEIKON ENGENHARIA não garante que os seus produtos atinjam o desempenho ideal se outras máquinas e equipamentos que o cliente vier a usar de forma conjunta com os produtos da VEIKON ENGENHARIA apresentem falhas, defeitos, ou forem manuseados de forma inadequada.</p>
-<p><strong>9. DIVERSOS: </strong> Nenhum empregado, agente, ou representante da VEIKON ENGENHARIA, à exceção de executivo devidamente autorizado, tem autoridade para alterar qualquer termo contido neste documento, ou fazer acordos ou representações não incorporadas no mesmo.</p>
-<p>9.1. A atuação de qualquer empregado, agente, ou representante da VEIKON ENGENHARIA nas instalações do cliente, não se configura sob nenhuma forma vínculo empregatício com o cliente em questão.</p>
-<p>9.2. Esta ordem de compra, termos e condições gerais são regidos de acordo com a legislação brasileira.</p>
-<p><strong>10. FORO:</strong> Eventuais ações e/ou procedimentos judiciais que se fizerem necessários quanto a qualquer tema do presente instrumento serão submetidos ao foro da Comarca de Vinhedo, Estado de São Paulo, com exclusão de qualquer outro.</p>
-`;
+<p class="ql-align-justify"><strong>5. LIMITAÇÃO DE RESPONSABILIDADE:</strong> A responsabilidade da VEIKON ENGENHARIA pelos seus produtos é limitada a reparos e/ou substituição de peças, ou não sendo possível fazê-los, ao reembolso total do valor do produto. A VEIKON ENGENHARIA não será responsabilizada ou arcará com qualquer outro tipo de dano ou prejuízo, direto ou indireto, material ou moral, que o cliente ou terceiros venham a sofrer em decorrência de seus produtos.</p>
+<p class="ql-align-justify"><strong>6. RETORNO DE MERCADORIAS:</strong> Todos os produtos da VEIKON ENGENHARIA são produzidos sob encomenda, de forma que o retorno de produtos adquiridos com defeito será condicionado à consulta e aprovação prévia pela VEIKON ENGENHARIA quanto a aplicabilidade da Garantia e seguido de uma autorização por escrito da VEIKON ENGENHARIA para retorno de produtos, cujos fretes deverão ser pré-pagos pelo cliente ou em caso de devoluções por defeitos e/ou ajustes em Garantia, por conta da VEIKON ENGENHARIA.</p>
+<p class="ql-align-justify"><strong>7. ATRASOS NA ENTREGA DE PRODUTOS:</strong> A VEIKON ENGENHARIA não poderá ser responsabilizada por quaisquer atrasos que tenham resultado de atos, fatos ou circunstâncias que estejam, de forma direta ou indireta, fora de seu controle, inclusive, mas não limitados a, caso fortuito ou força maior, guerra ou emergência nacional, furacão, incêndio, enchente, explosão, não disponibilidade de matéria-prima, falta de energia, controvérsias trabalhistas ou greves, exportação, importação, câmbio de dólar ou qualquer outra regulamentação ou restrição governamental. Fica estabelecido que o cliente não poderá cancelar uma ordem de compra com base em qualquer atraso decorrente de atos, fatos ou circunstâncias, bem como quaisquer outros motivos que não sejam de responsabilidade da VEIKON ENGENHARIA.</p>
+<p class="ql-align-justify">7.1. Não será de responsabilidade da VEIKON ENGENHARIA qualquer dano material, moral e/ou lucro cessante, de natureza material ou moral, que o cliente ou terceiros venham a sofrer devido a atrasos na entrega dos produtos ao cliente.</p>
+<p class="ql-align-justify"><strong>8. ALERTA:</strong> A VEIKON ENGENHARIA não garante que os seus produtos atinjam o desempenho ideal se outras máquinas e equipamentos que o cliente vier a usar de forma conjunta com os produtos da VEIKON ENGENHARIA apresentem falhas, defeitos, ou forem manuseados de forma inadequada.</p>
+<p class="ql-align-justify"><strong>9. DIVERSOS: </strong> Nenhum empregado, agente, ou representante da VEIKON ENGENHARIA, à exceção de executivo devidamente autorizado, tem autoridade para alterar qualquer termo contido neste documento, ou fazer acordos ou representações não incorporadas no mesmo.</p>
+<p class="ql-align-justify">9.1. A atuação de qualquer empregado, agente, ou representante da VEIKON ENGENHARIA nas instalações do cliente, não se configura sob nenhuma forma vínculo empregatício com o cliente em questão.</p>
+<p class="ql-align-justify">9.2. Esta ordem de compra, termos e condições gerais são regidos de acordo com a legislação brasileira.</p>
+<p class="ql-align-justify"><strong>10. FORO:</strong> Eventuais ações e/ou procedimentos judiciais que se fizerem necessários quanto a qualquer tema do presente instrumento serão submetidos ao foro da Comarca de Vinhedo, Estado de São Paulo, com exclusão de qualquer outro.</p>`;
 
 quillCondicoesGerais.root.innerHTML = condicoesGeraisBoilerplate;
 
@@ -489,6 +591,23 @@ const calcTotalGeral = () => {
 };
 
 if (tableBody) {
+  tableBody.addEventListener("focusin", (e) => {
+    if (e.target.classList.contains("val-unitario")) {
+      // extract just the numeric value for editing
+      const raw = e.target.textContent.replace(/[^\d,]/g, "").replace(",", ".");
+      const num = parseFloat(raw) || 0;
+      e.target.textContent = num > 0 ? String(num).replace(".", ",") : "";
+
+      // place cursor at end
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(e.target);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+
   tableBody.addEventListener("focusout", (e) => {
     if (e.target.classList.contains("quantidade")) {
       e.target.textContent = applyNumFormatting(
@@ -498,7 +617,6 @@ if (tableBody) {
       ).toLocaleString("pt-BR");
     }
     if (e.target.classList.contains("ipi")) {
-      console.log("IPI focusout:", e.target.textContent);
       e.target.textContent = applyNumFormatting(
         e.target.textContent,
         0,
@@ -506,11 +624,12 @@ if (tableBody) {
       ).toLocaleString("pt-BR");
     }
     if (e.target.classList.contains("val-unitario")) {
-      e.target.textContent = applyNumFormatting(
-        e.target.textContent,
-        0,
-        "0",
-      ).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const raw = e.target.textContent.replace(/[^\d,]/g, "").replace(",", ".");
+      const num = parseFloat(raw) || 0;
+      e.target.textContent = num.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
     }
     const row = e.target.closest("tr");
     if (row) {
@@ -523,6 +642,15 @@ if (tableBody) {
   tableBody.addEventListener("keydown", (e) => {
     const td = e.target.closest("td");
     if (!td) return;
+
+    // allow left/right arrows to work normally inside any contenteditable cell
+    if (
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      e.target.hasAttribute("contenteditable")
+    ) {
+      return;
+    }
+
     const tr = td.parentElement;
     const rowIndex = tr.rowIndex - 1;
     const cellIndex = td.cellIndex;
@@ -687,13 +815,21 @@ function clearForm() {
 }
 
 function buildPayload() {
+  const numCotacaoEl = document.getElementById("numCotacao");
   return {
     num_cotacao:
-      document.getElementById("numCotacao")?.value.toUpperCase() || "",
+      numCotacaoEl?.value.toUpperCase() || numCotacaoEl?.dataset.original || "",
     data_cotacao: document.getElementById("dataCotacao")?.value || "",
     cliente: document.getElementById("cliente")?.value || "",
     cliente_contato: document.getElementById("clienteContato")?.value || "",
     cliente_email: document.getElementById("clienteEmail")?.value || "",
+    cliente_cnpj: document.getElementById("clienteCnpj")?.value || "",
+    cliente_rua: document.getElementById("clienteRua")?.value || "",
+    cliente_bairro: document.getElementById("clienteBairro")?.value || "",
+    cliente_cidade: document.getElementById("clienteCidade")?.value || "",
+    cliente_estado: document.getElementById("clienteEstado")?.value || "",
+    cliente_cep: document.getElementById("clienteCep")?.value || "",
+    cliente_pais: document.getElementById("clientePais")?.value || "",
     prazo_entrega: document.getElementById("prazoEntrega")?.value || "",
     data_aceite: document.getElementById("dataAceite")?.value || "",
     data_prevista: document.getElementById("dataPrevistaCotacao")?.value || "",
@@ -788,10 +924,6 @@ if (btnSalvar) {
       return;
     }
 
-    if (!payload.num_cotacao) {
-      alert("Por favor, informe o número da cotação.");
-      return;
-    }
     if (!payload.cliente) {
       alert("Por favor, informe o cliente.");
       return;
@@ -810,7 +942,8 @@ if (btnSalvar) {
       if (!result.ok) {
         alert(data.error);
       } else {
-        await salvarPagamentos(currentCotacaoId); // ← add here for PUT
+        await salvarPagamentos(currentCotacaoId);
+        await salvarContatosCotacao(currentCotacaoId);
         document.getElementById("status").value = statusNovo;
         atualizarOpcoesStatus(statusNovo);
         setReadOnly(false);
@@ -843,7 +976,23 @@ if (btnSalvar) {
         alert(data.error);
       } else {
         currentCotacaoId = data.id;
-        await salvarPagamentos(currentCotacaoId); // ← add here for POST
+        console.log("New cotacao ID:", currentCotacaoId);
+        console.log("data returned:", JSON.stringify(data));
+        try {
+          await salvarPagamentos(currentCotacaoId);
+        } catch (e) {
+          console.error("salvarPagamentos error:", e);
+        }
+        try {
+          await salvarContatosCotacao(currentCotacaoId);
+        } catch (e) {
+          console.error("salvarContatosCotacao error:", e);
+        }
+        try {
+          await carregarCotacao(currentCotacaoId);
+        } catch (e) {
+          console.error("carregarCotacao error:", e);
+        }
         alert("Cotação salva com sucesso!");
       }
     }
@@ -890,6 +1039,7 @@ const listaArquivosCotacao = document.getElementById("lista-arquivos-cotacao");
 
 async function carregarArquivosCotacao() {
   if (!cotacaoIdFromUrl) return;
+  if (!numCotacao.value) return; // ← add this check
 
   const res = await fetch(
     `http://localhost:3000/cotacoes/${encodeURIComponent(numCotacao.value)}/arquivos`,
@@ -971,17 +1121,28 @@ if (btnUploadArquivosCotacao) {
 
 /* ─── LOAD EXISTING COTAÇÃO ─── */
 async function carregarCotacao(id) {
+  console.log("carregarCotacao called with id:", id);
   const res = await fetch(`http://localhost:3000/cotacoes/${id}`);
   const cotacao = await res.json();
+  console.log("num_cotacao from server:", cotacao.num_cotacao);
 
-  document.getElementById("numCotacao").value = cotacao.num_cotacao;
+  const numCotacaoEl = document.getElementById("numCotacao");
+  numCotacaoEl.value = cotacao.num_cotacao;
+  numCotacaoEl.dataset.original = cotacao.num_cotacao;
   document.getElementById("dataCotacao").value = cotacao.data_cotacao;
   document.getElementById("revisao").value = cotacao.revisao;
   document.getElementById("status").value = cotacao.status;
   document.getElementById("cliente").value = cotacao.cliente;
-  document.getElementById("clienteContato").value =
-    cotacao.cliente_contato || "";
-  document.getElementById("clienteEmail").value = cotacao.cliente_email || "";
+  document.getElementById("clienteCnpj").value = cotacao.cliente_cnpj ?? "";
+  document.getElementById("clienteRua").value = cotacao.cliente_rua ?? "";
+  document.getElementById("clienteBairro").value = cotacao.cliente_bairro ?? "";
+  document.getElementById("clienteCidade").value = cotacao.cliente_cidade ?? "";
+  document.getElementById("clienteEstado").value = cotacao.cliente_estado ?? "";
+  document.getElementById("clienteCep").value = cotacao.cliente_cep ?? "";
+  document.getElementById("clientePais").value = cotacao.cliente_pais ?? "";
+
+  contatosSelecionados = cotacao.contatos || [];
+  renderContatosSelecionados();
   document.getElementById("prazoEntrega").value = cotacao.prazo_entrega || "";
   document.getElementById("dataAceite").value = cotacao.data_aceite || "";
   document.getElementById("dataPrevistaCotacao").value =
@@ -1159,4 +1320,5 @@ if (btnImprimir) {
 }
 
 carregarClientesCotacao();
+carregarContatosCotacao();
 calcularDataPrevistaCotacao();

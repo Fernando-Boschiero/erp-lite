@@ -86,51 +86,6 @@ const calcTotalGeral = () => {
   });
 };
 
-if (tableBody) {
-  tableBody.addEventListener("focusout", (e) => {
-    if (e.target.classList.contains("quantidade")) {
-      e.target.textContent = applyNumFormatting(
-        e.target.textContent,
-        0,
-        "1",
-      ).toLocaleString("pt-BR");
-    }
-    if (e.target.classList.contains("ipi")) {
-      e.target.textContent = applyNumFormatting(
-        e.target.textContent,
-        0,
-        "0",
-      ).toLocaleString("pt-BR");
-    }
-    if (e.target.classList.contains("val-unitario")) {
-      e.target.textContent = applyNumFormatting(
-        e.target.textContent,
-        0,
-        "0",
-      ).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      });
-    }
-    const row = e.target.closest("tr");
-    if (row) {
-      calcRow(row);
-      calcTotalGeral();
-    }
-  });
-}
-
-if (tableBody) {
-  tableBody.addEventListener("change", (e) => {
-    if (e.target.classList.contains("item-recebido")) {
-      const row = e.target.closest("tr");
-      if (row) {
-        row.style.backgroundColor = e.target.checked ? "#d1e7dd" : "";
-      }
-    }
-  });
-}
-
 if (addRowBtn) {
   addRowBtn.addEventListener("click", () => {
     const rowCount = tableBody.rows.length + 1;
@@ -161,9 +116,62 @@ if (deleteRowBtn) {
 }
 
 if (tableBody) {
+  tableBody.addEventListener("focusin", (e) => {
+    if (e.target.classList.contains("val-unitario")) {
+      const raw = e.target.textContent.replace(/[^\d,]/g, "").replace(",", ".");
+      const num = parseFloat(raw) || 0;
+      e.target.textContent = num > 0 ? String(num).replace(".", ",") : "";
+
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(e.target);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
+
+  tableBody.addEventListener("focusout", (e) => {
+    if (e.target.classList.contains("quantidade")) {
+      e.target.textContent = applyNumFormatting(
+        e.target.textContent,
+        0,
+        "1",
+      ).toLocaleString("pt-BR");
+    }
+    if (e.target.classList.contains("ipi")) {
+      e.target.textContent = applyNumFormatting(
+        e.target.textContent,
+        0,
+        "0",
+      ).toLocaleString("pt-BR");
+    }
+    if (e.target.classList.contains("val-unitario")) {
+      const raw = e.target.textContent.replace(/[^\d,]/g, "").replace(",", ".");
+      const num = parseFloat(raw) || 0;
+      e.target.textContent = num.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+    }
+    const row = e.target.closest("tr");
+    if (row) {
+      calcRow(row);
+      calcTotalGeral();
+    }
+  });
+
   tableBody.addEventListener("keydown", (e) => {
     const td = e.target.closest("td");
     if (!td) return;
+
+    // allow left/right arrows to work normally inside any contenteditable cell
+    if (
+      (e.key === "ArrowLeft" || e.key === "ArrowRight") &&
+      e.target.hasAttribute("contenteditable")
+    ) {
+      return;
+    }
 
     const tr = td.parentElement;
     const rowIndex = tr.rowIndex - 1;
@@ -186,6 +194,17 @@ if (tableBody) {
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
+    }
+  });
+}
+
+if (tableBody) {
+  tableBody.addEventListener("change", (e) => {
+    if (e.target.classList.contains("item-recebido")) {
+      const row = e.target.closest("tr");
+      if (row) {
+        row.style.backgroundColor = e.target.checked ? "#d1e7dd" : "";
+      }
     }
   });
 }

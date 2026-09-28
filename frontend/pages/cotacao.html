@@ -73,6 +73,8 @@
 
         <h2>DADOS DO CLIENTE</h2>
         <hr class="dados-cliente" />
+
+        <!-- Client selector -->
         <div class="full-container">
           <div class="column">
             <label for="selectClienteCotacao"
@@ -82,8 +84,6 @@
               <option value="">Selecione um cliente...</option>
             </select>
           </div>
-        </div>
-        <div class="full-container">
           <div class="column">
             <label for="cliente">CLIENTE</label>
             <input
@@ -92,23 +92,74 @@
               name="cliente"
               placeholder="Nome da Empresa" />
           </div>
-          <div class="column">
-            <label for="clienteContato">CONTATO</label>
+          <div class="column half-flex">
+            <label for="clienteCnpj">CNPJ</label>
             <input
               type="text"
-              id="clienteContato"
-              name="cliente_contato"
-              placeholder="Sr. Nome Sobrenome" />
-          </div>
-          <div class="column">
-            <label for="clienteEmail">EMAIL</label>
-            <input
-              type="email"
-              id="clienteEmail"
-              name="cliente_email"
-              placeholder="email@empresa.com" />
+              id="clienteCnpj"
+              name="cliente_cnpj"
+              placeholder="00.000.000/0000-00" />
           </div>
         </div>
+        <div class="full-container">
+          <div class="column">
+            <label for="clienteRua">RUA</label>
+            <input type="text" id="clienteRua" name="cliente_rua" />
+          </div>
+          <div class="column">
+            <label for="clienteBairro">BAIRRO</label>
+            <input type="text" id="clienteBairro" name="cliente_bairro" />
+          </div>
+        </div>
+        <div class="full-container no-wrap">
+          <div class="column half-flex">
+            <label for="clienteCidade">CIDADE</label>
+            <input type="text" id="clienteCidade" name="cliente_cidade" />
+          </div>
+          <div class="column half-flex">
+            <label for="clienteEstado">ESTADO</label>
+            <input type="text" id="clienteEstado" name="cliente_estado" />
+          </div>
+          <div class="column half-flex">
+            <label for="clienteCep">CEP</label>
+            <input type="text" id="clienteCep" name="cliente_cep" />
+          </div>
+          <div class="column half-flex">
+            <label for="clientePais">PAÍS</label>
+            <input
+              type="text"
+              id="clientePais"
+              name="cliente_pais"
+              placeholder="Brasil" />
+          </div>
+        </div>
+
+        <!-- Contacts section -->
+        <h2>CONTATOS</h2>
+        <hr />
+        <div class="full-container">
+          <div class="column">
+            <label for="selectContatoCotacao">ADICIONAR CONTATO</label>
+            <select id="selectContatoCotacao">
+              <option value="">Selecione um contato...</option>
+            </select>
+            <button
+              type="button"
+              id="btn-adicionar-contato"
+              style="
+                margin-top: 8px;
+                background: #1a5c35;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 14px;
+                cursor: pointer;
+              ">
+              + ADICIONAR
+            </button>
+          </div>
+        </div>
+        <div id="contatos-vinculados" style="margin-top: 12px"></div>
 
         <!-- CLIENT INFO -->
         <div class="container-fornecedor-condicoes">
@@ -150,7 +201,8 @@
                   type="text"
                   id="validadeProposta"
                   name="validade_proposta"
-                  placeholder="Ex: 15 dias" />
+                  placeholder="Ex: 15 dias"
+                  value="15 dias" />
               </div>
             </div>
             <div class="input-group moeda">

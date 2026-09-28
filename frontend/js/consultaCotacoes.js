@@ -6,6 +6,7 @@ const btnLimparFiltros = document.getElementById("btn-limpar-filtros");
 const filtroDe = document.getElementById("filtroDe");
 const filtroAte = document.getElementById("filtroAte");
 const headerDataPrevista = document.getElementById("header-data-prevista");
+const headerData = document.getElementById("header-data");
 /* MODAL VARIABLES */
 const modalRevisoes = document.getElementById("modal-revisoes");
 const btnFecharModal = document.getElementById("btn-fechar-modal");
@@ -13,7 +14,8 @@ const resultadoRevisoes = document.getElementById("resultado-revisoes");
 const modalRevisoesTitulo = document.getElementById("modal-revisoes-titulo");
 
 let cotacoes = [];
-let sortDirection = 0; // 0 = original, 1 = ascending, -1 = descending
+let sortDirection = 0; // for data_prevista 0 = original, 1 = ascending, -1 = descending
+let sortDirectionData = 0; // for data_cotacao 0 = original, 1 = ascending, -1 = descending
 
 function normalizarTexto(texto) {
   return (
@@ -89,20 +91,41 @@ function applyFilters(lista) {
 }
 
 function applySort(lista) {
-  if (sortDirection === 0) return lista;
+  // sort by data_cotacao
+  if (sortDirectionData !== 0) {
+    return [...lista].sort((a, b) => {
+      if (!a.data_cotacao && !b.data_cotacao) return 0;
+      if (!a.data_cotacao) return 1;
+      if (!b.data_cotacao) return -1;
+      const dateA = new Date(a.data_cotacao);
+      const dateB = new Date(b.data_cotacao);
+      return sortDirectionData === 1 ? dateA - dateB : dateB - dateA;
+    });
+  }
 
-  return [...lista].sort((a, b) => {
-    if (!a.data_prevista && !b.data_prevista) return 0;
-    if (!a.data_prevista) return 1;
-    if (!b.data_prevista) return -1;
+  // sort by data_prevista
+  if (sortDirection !== 0) {
+    return [...lista].sort((a, b) => {
+      if (!a.data_prevista && !b.data_prevista) return 0;
+      if (!a.data_prevista) return 1;
+      if (!b.data_prevista) return -1;
+      const [diaA, mesA, anoA] = a.data_prevista.split("/");
+      const [diaB, mesB, anoB] = b.data_prevista.split("/");
+      const dateA = new Date(
+        parseInt(anoA),
+        parseInt(mesA) - 1,
+        parseInt(diaA),
+      );
+      const dateB = new Date(
+        parseInt(anoB),
+        parseInt(mesB) - 1,
+        parseInt(diaB),
+      );
+      return sortDirection === 1 ? dateA - dateB : dateB - dateA;
+    });
+  }
 
-    const [diaA, mesA, anoA] = a.data_prevista.split("/");
-    const [diaB, mesB, anoB] = b.data_prevista.split("/");
-    const dateA = new Date(parseInt(anoA), parseInt(mesA) - 1, parseInt(diaA));
-    const dateB = new Date(parseInt(anoB), parseInt(mesB) - 1, parseInt(diaB));
-
-    return sortDirection === 1 ? dateA - dateB : dateB - dateA;
-  });
+  return lista;
 }
 
 async function carregarCotacoes() {
@@ -165,10 +188,10 @@ async function renderizarTabela(lista) {
         ">${c.status}</span>
       </td>
       <td>${total.toLocaleString("pt-BR", { style: "currency", currency: moedaCotacao })}</td>
-        <button class="btn-editar" data-id="${c.id}">✏️ Editar</button>
-        <button class="btn-pdf" data-id="${c.id}">📄 PDF</button>
-        <button class="btn-revisoes" data-id="${c.id}" data-num="${c.num_cotacao}">📋 Revisões</button>
-        <button class="btn-deletar" data-id="${c.id}" data-num="${c.num_cotacao}">🗑️ Apagar</button>
+<button class="btn-editar" data-id="${c.id}" title="Editar Cotação">✏️</button>
+<button class="btn-pdf" data-id="${c.id}" title="Gerar PDF">📄</button>
+<button class="btn-revisoes" data-id="${c.id}" data-num="${c.num_cotacao}" title="Ver Revisões">🔄</button>
+<button class="btn-deletar" data-id="${c.id}" data-num="${c.num_cotacao}" title="Excluir Cotação">🗑️</button>
       </td>
     `;
     resultadoCotacoes.appendChild(tr);
@@ -205,19 +228,42 @@ function aplicarFiltrosEOrdenacao() {
   renderizarTabela(ordenado);
 }
 
-// sort on header click
+// sort Data Prevista column click
 if (headerDataPrevista) {
   headerDataPrevista.addEventListener("click", () => {
+    sortDirectionData = 0; // reset data sort
+    if (headerData) headerData.textContent = "Data  ↕";
     if (sortDirection === 0) sortDirection = 1;
     else if (sortDirection === 1) sortDirection = -1;
     else sortDirection = 0;
 
     headerDataPrevista.textContent =
       sortDirection === 0
-        ? "Data Prevista ↕"
+        ? "Data Prevista  ↕"
         : sortDirection === 1
-          ? "Data Prevista ↑"
-          : "Data Prevista ↓";
+          ? "Data Prevista  ↑"
+          : "Data Prevista  ↓";
+
+    aplicarFiltrosEOrdenacao();
+  });
+}
+
+// sort Data column on click
+if (headerData) {
+  headerData.addEventListener("click", () => {
+    sortDirection = 0; // reset data_prevista sort
+    if (headerDataPrevista) headerDataPrevista.textContent = "Data Prevista  ↕";
+
+    if (sortDirectionData === 0) sortDirectionData = 1;
+    else if (sortDirectionData === 1) sortDirectionData = -1;
+    else sortDirectionData = 0;
+
+    headerData.textContent =
+      sortDirectionData === 0
+        ? "Data  ↕"
+        : sortDirectionData === 1
+          ? "Data  ↑"
+          : "Data  ↓";
 
     aplicarFiltrosEOrdenacao();
   });
@@ -234,7 +280,9 @@ if (btnLimparFiltros) {
     inputBusca.value = "";
     setDefaultPeriod();
     sortDirection = 0;
-    if (headerDataPrevista) headerDataPrevista.textContent = "Data Prevista ↕";
+    sortDirectionData = 0;
+    if (headerDataPrevista) headerDataPrevista.textContent = "Data Prevista  ↕";
+    if (headerData) headerData.textContent = "Data  ↕";
     aplicarFiltrosEOrdenacao();
   });
 }

@@ -183,6 +183,8 @@ app.get("/clientes", (req, res) => {
 app.post("/clientes", (req, res) => {
   const {
     razao_social,
+    sigla,
+    nome_fantasia,
     cnpj,
     ie,
     rua,
@@ -190,6 +192,7 @@ app.post("/clientes", (req, res) => {
     cidade,
     estado,
     cep,
+    pais,
     telefone,
     contato,
     telefone_rep,
@@ -197,16 +200,19 @@ app.post("/clientes", (req, res) => {
   } = req.body;
   if (!razao_social)
     return res.status(400).json({ error: "Razão social é obrigatória." });
+  if (!sigla) return res.status(400).json({ error: "Sigla é obrigatória." });
   try {
     const result = db
       .prepare(
         `
-      INSERT INTO clientes (razao_social, cnpj, ie, rua, bairro, cidade, estado, cep, telefone, contato, telefone_rep, email)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO clientes (razao_social, sigla, nome_fantasia, cnpj, ie, rua, bairro, cidade, estado, cep, pais, telefone, contato, telefone_rep, email)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       )
       .run(
         razao_social,
+        sigla,
+        nome_fantasia,
         cnpj,
         ie,
         rua,
@@ -214,6 +220,7 @@ app.post("/clientes", (req, res) => {
         cidade,
         estado,
         cep,
+        pais,
         telefone,
         contato,
         telefone_rep,
@@ -233,6 +240,8 @@ app.post("/clientes", (req, res) => {
 app.put("/clientes/:id", (req, res) => {
   const {
     razao_social,
+    sigla,
+    nome_fantasia,
     cnpj,
     ie,
     rua,
@@ -240,6 +249,7 @@ app.put("/clientes/:id", (req, res) => {
     cidade,
     estado,
     cep,
+    pais,
     telefone,
     contato,
     telefone_rep,
@@ -248,14 +258,16 @@ app.put("/clientes/:id", (req, res) => {
   try {
     db.prepare(
       `
-      UPDATE clientes SET
-        razao_social=?, cnpj=?, ie=?, rua=?, bairro=?, cidade=?, estado=?, cep=?,
-        telefone=?, contato=?, telefone_rep=?, email=?,
-        updated_at=datetime('now')
-      WHERE id=?
+UPDATE clientes SET
+  razao_social=?, sigla=?, nome_fantasia=?, cnpj=?, ie=?, rua=?, bairro=?, cidade=?, estado=?, cep=?, pais=?,
+  telefone=?, contato=?, telefone_rep=?, email=?,
+  updated_at=datetime('now')
+WHERE id=?
     `,
     ).run(
       razao_social,
+      sigla,
+      nome_fantasia,
       cnpj,
       ie,
       rua,
@@ -263,6 +275,7 @@ app.put("/clientes/:id", (req, res) => {
       cidade,
       estado,
       cep,
+      pais,
       telefone,
       contato,
       telefone_rep,
@@ -343,11 +356,7 @@ app.get("/cotacoes/:num_cotacao/revisoes", (req, res) => {
 // GET - fetch one specific cotação by id, with its line items and status log
 app.get("/cotacoes/:id", (req, res) => {
   const cotacao = db
-    .prepare(
-      `
-    SELECT * FROM cotacoes WHERE id = ?
-  `,
-    )
+    .prepare(`SELECT * FROM cotacoes WHERE id = ?`)
     .get(req.params.id);
 
   if (!cotacao)
@@ -356,8 +365,7 @@ app.get("/cotacoes/:id", (req, res) => {
   const itens = db
     .prepare(
       `
-    SELECT * FROM cotacao_itens WHERE cotacao_id = ?
-    ORDER BY item ASC
+    SELECT * FROM cotacao_itens WHERE cotacao_id = ? ORDER BY item ASC
   `,
     )
     .all(req.params.id);
@@ -365,13 +373,25 @@ app.get("/cotacoes/:id", (req, res) => {
   const statusLog = db
     .prepare(
       `
-    SELECT * FROM cotacao_status_log WHERE cotacao_id = ?
-    ORDER BY alterado_em ASC
+    SELECT * FROM cotacao_status_log WHERE cotacao_id = ? ORDER BY alterado_em ASC
   `,
     )
     .all(req.params.id);
 
-  res.json({ ...cotacao, itens, statusLog });
+  const contatos = db
+    .prepare(
+      `
+    SELECT ct.*, cl.razao_social as cliente_nome
+    FROM cotacao_contatos cc
+    JOIN contatos ct ON ct.id = cc.contato_id
+    LEFT JOIN clientes cl ON cl.id = ct.cliente_id
+    WHERE cc.cotacao_id = ?
+    ORDER BY ct.nome ASC
+  `,
+    )
+    .all(req.params.id);
+
+  res.json({ ...cotacao, itens, statusLog, contatos });
 });
 
 // POST - create a new cotação
@@ -382,6 +402,13 @@ app.post("/cotacoes", (req, res) => {
     cliente,
     cliente_contato,
     cliente_email,
+    cliente_cnpj,
+    cliente_rua,
+    cliente_bairro,
+    cliente_cidade,
+    cliente_estado,
+    cliente_cep,
+    cliente_pais,
     objetivo,
     descricao_equipamentos,
     condicoes_proposta,
@@ -402,6 +429,16 @@ app.post("/cotacoes", (req, res) => {
     itens,
   } = req.body;
 
+  // get cliente sigla
+  const clienteData = db
+    .prepare(`SELECT sigla FROM clientes WHERE razao_social = ?`)
+    .get(cliente);
+  const siglaCliente = clienteData?.sigla || cliente.split(" ")[0];
+
+  // auto-generate num_cotacao
+  const ano = new Date().getFullYear();
+  const numCotacaoGerado = gerarNumeroCotacao(siglaCliente, ano);
+
   try {
     const transaction = db.transaction(() => {
       // insert the cotação
@@ -409,21 +446,28 @@ app.post("/cotacoes", (req, res) => {
         .prepare(
           `
   INSERT INTO cotacoes (
-  num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email,
+  num_cotacao, data_cotacao, cliente, cliente_contato, cliente_email, cliente_cnpj, cliente_rua, cliente_bairro, cliente_cidade, cliente_estado, cliente_cep, cliente_pais,
   objetivo, descricao_equipamentos, condicoes_proposta, observacoes,
   prazo_entrega, data_aceite, data_prevista, cond_pagamento, validade_proposta, moeda,
   condicoes_gerais, comprador, comprador_email, comprador_telefone,
   instalacao, frete,
   status, revisao
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
+) VALUES  (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Criada', 0)
 `,
         )
         .run(
-          num_cotacao,
+          numCotacaoGerado,
           data_cotacao,
           cliente,
           cliente_contato,
           cliente_email,
+          cliente_cnpj,
+          cliente_rua,
+          cliente_bairro,
+          cliente_cidade,
+          cliente_estado,
+          cliente_cep,
+          cliente_pais,
           objetivo,
           descricao_equipamentos,
           condicoes_proposta,
@@ -493,6 +537,13 @@ app.put("/cotacoes/:id", (req, res) => {
     cliente,
     cliente_contato,
     cliente_email,
+    cliente_cnpj,
+    cliente_rua,
+    cliente_bairro,
+    cliente_cidade,
+    cliente_estado,
+    cliente_cep,
+    cliente_pais,
     objetivo,
     descricao_equipamentos,
     condicoes_proposta,
@@ -516,7 +567,7 @@ app.put("/cotacoes/:id", (req, res) => {
 
   try {
     const current = db
-      .prepare(`SELECT status FROM cotacoes WHERE id = ?`)
+      .prepare(`SELECT status, num_cotacao FROM cotacoes WHERE id = ?`)
       .get(req.params.id);
 
     if (!current)
@@ -586,7 +637,7 @@ app.put("/cotacoes/:id", (req, res) => {
           `
 UPDATE cotacoes SET
   num_cotacao=?, data_cotacao=?, cliente=?, cliente_contato=?,
-  cliente_email=?, objetivo=?, descricao_equipamentos=?,
+  cliente_email=?, cliente_cnpj=?, cliente_rua=?, cliente_bairro=?, cliente_cidade=?, cliente_estado=?, cliente_cep=?, cliente_pais=?, objetivo=?, descricao_equipamentos=?,
   condicoes_proposta=?, observacoes=?, prazo_entrega=?,
   data_aceite=?, data_prevista=?, cond_pagamento=?,
   validade_proposta=?, moeda=?, condicoes_gerais=?,
@@ -596,11 +647,18 @@ UPDATE cotacoes SET
 WHERE id=?
         `,
         ).run(
-          num_cotacao,
+          num_cotacao || current.num_cotacao,
           data_cotacao,
           cliente,
           cliente_contato,
           cliente_email,
+          cliente_cnpj,
+          cliente_rua,
+          cliente_bairro,
+          cliente_cidade,
+          cliente_estado,
+          cliente_cep,
+          cliente_pais,
           objetivo,
           descricao_equipamentos,
           condicoes_proposta,
@@ -932,11 +990,23 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
       )
       .all(req.params.id);
 
-    // add this right after:
     const pagamentos = db
       .prepare(
         `
   SELECT * FROM cotacao_pagamentos WHERE cotacao_id = ? ORDER BY id ASC
+`,
+      )
+      .all(req.params.id);
+
+    const contatosCotacao = db
+      .prepare(
+        `
+  SELECT ct.*, cl.razao_social as cliente_nome
+  FROM cotacao_contatos cc
+  JOIN contatos ct ON ct.id = cc.contato_id
+  LEFT JOIN clientes cl ON cl.id = ct.cliente_id
+  WHERE cc.cotacao_id = ?
+  ORDER BY ct.nome ASC
 `,
       )
       .all(req.params.id);
@@ -1020,6 +1090,11 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
 `,
       )
       .join("");
+
+    function formatCEP(cep) {
+      if (!cep) return "";
+      return cep.replace(/\D/g, "").replace(/(\d{5})(\d{3})/, "$1-$2");
+    }
 
     // full HTML document for wkhtmltopdf to render
     const html = `
@@ -1117,27 +1192,59 @@ body {
 <table style="width:100%; border-collapse: collapse; margin-bottom: 6mm; border: none;">
   <tr>
     <td style="width:50%; padding-right: 5mm; vertical-align: top; border: none;">
-      <h2>DADOS DO CLIENTE</h2>
-      <hr>
-
-      <table style="width:100%; border-collapse: collapse; margin-top: 3mm; border: none;">
-      <tr>
-          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none; padding-left: 0;">
-          <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">CLIENTE</div>
+<h2>DADOS DO CLIENTE</h2>
+<hr>
+<table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm;">
+  <!-- Row 1: Cliente and CNPJ side by side -->
+  <tr>
+    <td style="border:none; width:50%; vertical-align:top; padding-right:5mm;">
+      <div style="font-size:8pt; font-weight:bold;">CLIENTE</div>
       <div>${cotacao.cliente ?? "-"}</div>
-          </td>
-      </tr>  
-      <tr>
-          <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none; padding-left: 0;">
-            <div style="font-size: 8pt; font-weight: bold;">CONTATO</div>
-            <div>${cotacao.cliente_contato ?? "-"}</div>
-          </td>
-          <td style="width:50%; vertical-align: top; border: none; padding-left: 0;">
-            <div style="font-size: 8pt; font-weight: bold;">EMAIL</div>
-            <div>${cotacao.cliente_email ?? "-"}</div>
-          </td>
-        </tr>
-      </table>
+    </td>
+    <td style="border:none; width:50%; vertical-align:top;">
+      ${
+        cotacao.cliente_cnpj
+          ? `
+      <div style="font-size:8pt; font-weight:bold;">CNPJ</div>
+      <div>${cotacao.cliente_cnpj}</div>`
+          : ""
+      }
+    </td>
+  </tr>
+  <!-- Row 2: Full address -->
+  ${
+    cotacao.cliente_rua
+      ? `
+  <tr>
+    <td colspan="2" style="border:none; vertical-align:top; padding-top:2mm;">
+      <div style="font-size:8pt; font-weight:bold;">ENDEREÇO</div>
+      <div>${cotacao.cliente_rua}${cotacao.cliente_bairro ? `, ${cotacao.cliente_bairro}` : ""}, ${cotacao.cliente_cidade ?? ""}${cotacao.cliente_estado ? ` - ${cotacao.cliente_estado}` : ""}${cotacao.cliente_cep ? `, ${formatCEP(cotacao.cliente_cep)}` : ""}${cotacao.cliente_pais ? ` — ${cotacao.cliente_pais}` : ""}</div>
+    </td>
+  </tr>`
+      : ""
+  }
+  <!-- Row 3: Contacts -->
+  <tr>
+    <td colspan="2" style="border:none; vertical-align:top; padding-top:2mm;">
+      <div style="font-size:8pt; font-weight:bold;">CONTATO(S)</div>
+      ${
+        contatosCotacao.length > 0
+          ? contatosCotacao
+              .map(
+                (c) => `
+          <div style="margin-bottom:2mm;">
+            <strong>${c.nome}</strong>
+            ${c.email ? `&nbsp;|&nbsp;${c.email}` : ""}
+            ${c.telefone ? `&nbsp;|&nbsp;${c.telefone}` : ""}
+          </div>
+        `,
+              )
+              .join("")
+          : `<div>${cotacao.cliente_contato ?? "-"}${cotacao.cliente_email ? ` | ${cotacao.cliente_email}` : ""}</div>`
+      }
+    </td>
+  </tr>
+</table>
     </td>
     <td style="width:50%; vertical-align: top; border: none;">
       <h2>CONDIÇÕES COMERCIAIS</h2>
@@ -1371,7 +1478,7 @@ function subst() {
 
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="COT-${cotacao.num_cotacao}-${revisao}.pdf"`,
+      "Content-Disposition": `attachment; filename="${cotacao.num_cotacao}.pdf"`,
     });
 
     res.send(pdfBuffer);
@@ -1561,7 +1668,7 @@ app.get("/pedidos", (req, res) => {
   res.json(rows);
 });
 
-// GET - fetch one pedido with its line items and status log
+// GET - fetch one pedido with its line items
 app.get("/pedidos/:id", (req, res) => {
   const pedido = db
     .prepare(`SELECT * FROM pedidos WHERE id = ?`)
@@ -1570,22 +1677,10 @@ app.get("/pedidos/:id", (req, res) => {
   if (!pedido) return res.status(404).json({ error: "Pedido não encontrado." });
 
   const itens = db
-    .prepare(
-      `
-    SELECT * FROM pedido_itens WHERE pedido_id = ? ORDER BY item ASC
-  `,
-    )
+    .prepare(`SELECT * FROM pedido_itens WHERE pedido_id = ? ORDER BY item ASC`)
     .all(req.params.id);
 
-  const statusLog = db
-    .prepare(
-      `
-    SELECT * FROM pedido_status_log WHERE pedido_id = ? ORDER BY alterado_em ASC
-  `,
-    )
-    .all(req.params.id);
-
-  res.json({ ...pedido, itens, statusLog });
+  res.json({ ...pedido, itens });
 });
 
 // POST - clone an existing pedido
@@ -1692,6 +1787,15 @@ app.put("/pedidos/:id", (req, res) => {
     comprador_telefone,
     itens,
   } = req.body;
+
+  if (data_pedido) {
+    const ano = new Date(data_pedido).getFullYear();
+    if (ano < 2000 || ano > 2099) {
+      return res
+        .status(400)
+        .json({ error: "Data do pedido inválida. Verifique o ano." });
+    }
+  }
 
   try {
     const current = db
@@ -1855,6 +1959,15 @@ app.post("/pedidos", (req, res) => {
     itens,
   } = req.body;
 
+  if (data_pedido) {
+    const ano = new Date(data_pedido).getFullYear();
+    if (ano < 2000 || ano > 2099) {
+      return res
+        .status(400)
+        .json({ error: "Data do pedido inválida. Verifique o ano." });
+    }
+  }
+
   try {
     const transaction = db.transaction(() => {
       const result = db
@@ -1904,14 +2017,6 @@ app.post("/pedidos", (req, res) => {
           item.total,
         );
       }
-
-      // log initial status
-      db.prepare(
-        `
-        INSERT INTO pedido_status_log (pedido_id, status_anterior, status_novo, alterado_por)
-        VALUES (?, null, 'Criado', ?)
-      `,
-      ).run(pedidoId, alterado_por);
 
       return pedidoId;
     });
@@ -3671,6 +3776,138 @@ app.get("/relatorios/custos-projeto", (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── CONTATOS ───
+
+// GET - fetch all contatos with cliente name
+app.get("/contatos", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT ct.*, cl.razao_social as cliente_nome
+      FROM contatos ct
+      LEFT JOIN clientes cl ON cl.id = ct.cliente_id
+      ORDER BY ct.nome ASC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create new contato
+app.post("/contatos", (req, res) => {
+  const { nome, email, telefone, cliente_id, unidade } = req.body;
+  if (!nome) return res.status(400).json({ error: "Nome é obrigatório." });
+  try {
+    const result = db
+      .prepare(
+        `
+      INSERT INTO contatos (nome, email, telefone, cliente_id, unidade)
+      VALUES (?, ?, ?, ?, ?)
+    `,
+      )
+      .run(nome, email, telefone, cliente_id || null, unidade);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT - update contato
+app.put("/contatos/:id", (req, res) => {
+  const { nome, email, telefone, cliente_id, unidade } = req.body;
+  try {
+    db.prepare(
+      `
+      UPDATE contatos SET
+        nome=?, email=?, telefone=?, cliente_id=?, unidade=?,
+        updated_at=datetime('now')
+      WHERE id=?
+    `,
+    ).run(nome, email, telefone, cliente_id || null, unidade, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE - delete contato
+app.delete("/contatos/:id", (req, res) => {
+  try {
+    const contato = db
+      .prepare(`SELECT * FROM contatos WHERE id = ?`)
+      .get(req.params.id);
+    if (!contato)
+      return res.status(404).json({ error: "Contato não encontrado." });
+    db.prepare(`DELETE FROM contatos WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET - fetch contacts for a cotação
+app.get("/cotacoes/:id/contatos", (req, res) => {
+  try {
+    const contatos = db
+      .prepare(
+        `
+      SELECT ct.*, cl.razao_social as cliente_nome
+      FROM cotacao_contatos cc
+      JOIN contatos ct ON ct.id = cc.contato_id
+      LEFT JOIN clientes cl ON cl.id = ct.cliente_id
+      WHERE cc.cotacao_id = ?
+      ORDER BY ct.nome ASC
+    `,
+      )
+      .all(req.params.id);
+    res.json(contatos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - save contacts for a cotação
+app.post("/cotacoes/:id/contatos", (req, res) => {
+  const { contato_ids } = req.body;
+  try {
+    const transaction = db.transaction(() => {
+      db.prepare(`DELETE FROM cotacao_contatos WHERE cotacao_id = ?`).run(
+        req.params.id,
+      );
+      for (const contato_id of contato_ids || []) {
+        db.prepare(
+          `
+          INSERT OR IGNORE INTO cotacao_contatos (cotacao_id, contato_id) VALUES (?, ?)
+        `,
+        ).run(req.params.id, contato_id);
+      }
+    });
+    transaction();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// generate cotação number
+const gerarNumeroCotacao = (sigla, ano) => {
+  const counter = db
+    .prepare(
+      `
+    UPDATE cotacao_counter SET ultimo_numero = ultimo_numero + 1 WHERE id = 1
+  `,
+    )
+    .run();
+  const novoNumero = db
+    .prepare(`SELECT ultimo_numero FROM cotacao_counter WHERE id = 1`)
+    .get().ultimo_numero;
+  return `COT-${sigla.toUpperCase()}-${ano}-${String(novoNumero).padStart(3, "0")}-Rev.0`;
+};
 
 // start the server
 app.listen(PORT, () => {
