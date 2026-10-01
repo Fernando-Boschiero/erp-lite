@@ -1173,17 +1173,17 @@ body {
 
 <table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm; text-align: center;">
   <tr>
-    <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
-      <div style="font-size: 8pt; font-weight: bold;">NO. DA COTAÇÃO</div>
-      <div>${cotacao.num_cotacao ?? "-"}</div>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0 0 0 0; text-align: center;">
+      <div style="font-size: 14pt; font-weight: bold;">NO. DA COTAÇÃO</div>
+      <div style="font-size: 14pt">${cotacao.num_cotacao ?? "-"}</div>
     </td>
-    <td style="width:33%; vertical-align: top; border: none; padding: 0 5mm 0 0; text-align: center;">
-      <div style="font-size: 8pt; font-weight: bold;">DATA</div>
-      <div>${dataFormatada}</div>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0 0 0 50mm; text-align: center;">
+      <div style="font-size: 12pt; font-weight: bold;">DATA</div>
+      <div style="font-size: 12pt">${dataFormatada}</div>
     </td>
-    <td style="width:33%; vertical-align: top; border: none; padding: 0; text-align: center;">
-      <div style="font-size: 8pt; font-weight: bold;">REVISÃO</div>
-      <div>${revisao}</div>
+    <td style="width:33%; vertical-align: top; border: none; padding: 0 0 0 20mm; text-align: center;">
+      <div style="font-size: 12pt; font-weight: bold;">REVISÃO</div>
+      <div style="font-size: 12pt">${revisao}</div>
     </td>
   </tr>
 </table>
@@ -1476,9 +1476,12 @@ function subst() {
       });
     });
 
+    const revisaoSuffix =
+      cotacao.revisao > 0 ? `-Rev.${cotacao.revisao}` : `-Rev.0`;
+
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${cotacao.num_cotacao}.pdf"`,
+      "Content-Disposition": `attachment; filename="${cotacao.num_cotacao}${revisaoSuffix}.pdf"`,
     });
 
     res.send(pdfBuffer);
@@ -3906,7 +3909,7 @@ const gerarNumeroCotacao = (sigla, ano) => {
   const novoNumero = db
     .prepare(`SELECT ultimo_numero FROM cotacao_counter WHERE id = 1`)
     .get().ultimo_numero;
-  return `COT-${sigla.toUpperCase()}-${ano}-${String(novoNumero).padStart(3, "0")}-Rev.0`;
+  return `COT-${sigla.toUpperCase()}-${ano}-${String(novoNumero).padStart(3, "0")}`;
 };
 
 // start the server
