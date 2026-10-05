@@ -2821,6 +2821,63 @@ app.get("/pedidos/:id/notas-fiscais", (req, res) => {
   }
 });
 
+// ─── TIPOS NF ───
+
+// GET - fetch all tipos
+app.get("/tipos-nf", (req, res) => {
+  try {
+    const rows = db
+      .prepare(
+        `
+      SELECT * FROM tipos_nf ORDER BY categoria ASC, descricao ASC
+    `,
+      )
+      .all();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST - create new tipo
+app.post("/tipos-nf", (req, res) => {
+  const { descricao, categoria } = req.body;
+  if (!descricao)
+    return res.status(400).json({ error: "Descrição é obrigatória." });
+  if (!categoria)
+    return res.status(400).json({ error: "Categoria é obrigatória." });
+  try {
+    const result = db
+      .prepare(
+        `
+      INSERT INTO tipos_nf (descricao, categoria) VALUES (?, ?)
+    `,
+      )
+      .run(descricao, categoria);
+    res.json({ success: true, id: result.lastInsertRowid });
+  } catch (err) {
+    if (err.message.includes("UNIQUE")) {
+      res.status(409).json({ error: "Este tipo já existe." });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
+// DELETE - delete tipo
+app.delete("/tipos-nf/:id", (req, res) => {
+  try {
+    const tipo = db
+      .prepare(`SELECT * FROM tipos_nf WHERE id = ?`)
+      .get(req.params.id);
+    if (!tipo) return res.status(404).json({ error: "Tipo não encontrado." });
+    db.prepare(`DELETE FROM tipos_nf WHERE id = ?`).run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET - controle de custos (one row per NF linked to a pedido)
 app.get("/controle-custos", (req, res) => {
   try {
@@ -3156,7 +3213,7 @@ app.put("/duplicatas/:id", (req, res) => {
 
 // POST - create manual lancamento (no XML)
 app.post("/notas-fiscais/manual", (req, res) => {
-  const { xNome, tipo, valor, dVenc, dhEmi } = req.body;
+  const { xNome, tipo, valor, dVenc, dhEmi, pedido_id } = req.body;
 
   if (!xNome)
     return res.status(400).json({ error: "Fornecedor é obrigatório." });
@@ -3165,20 +3222,45 @@ app.post("/notas-fiscais/manual", (req, res) => {
 
   try {
     const transaction = db.transaction(() => {
-      // generate unique NF identifier using timestamp
+      // get fornecedor_id from pedido if linked
+      let fornecedor_id = null;
+      if (pedido_id) {
+        const pedido = db
+          .prepare(`SELECT fornecedor_id FROM pedidos WHERE id = ?`)
+          .get(pedido_id);
+        fornecedor_id = pedido?.fornecedor_id || null;
+      }
+
       const nNFManual = `MANUAL-${Date.now()}`;
 
       const result = db
         .prepare(
           `
-        INSERT INTO notas_fiscais (nNF, xNome, tipo, dhEmi, status_pagamento)
-        VALUES (?, ?, ?, ?, 'Aberta')
+        INSERT INTO notas_fiscais (nNF, xNome, tipo, dhEmi, status_pagamento, pedido_id, fornecedor_id, direcao)
+        VALUES (?, ?, ?, ?, 'Aberta', ?, ?, 'Entrada')
       `,
         )
-        .run(nNFManual, xNome, tipo || null, dhEmi || null);
+        .run(
+          nNFManual,
+          xNome,
+          tipo || null,
+          dhEmi || null,
+          pedido_id || null,
+          fornecedor_id,
+        );
 
       const nfId = result.lastInsertRowid;
 
+      // link to pedido via junction table if provided
+      if (pedido_id) {
+        db.prepare(
+          `
+          INSERT OR IGNORE INTO nf_pedidos (nf_id, pedido_id) VALUES (?, ?)
+        `,
+        ).run(nfId, pedido_id);
+      }
+
+      // insert duplicata
       db.prepare(
         `
         INSERT INTO nf_duplicatas (nf_id, nDup, dVenc, vDup, status, manual)
@@ -3186,6 +3268,7 @@ app.post("/notas-fiscais/manual", (req, res) => {
       `,
       ).run(nfId, dVenc, valor || 0);
 
+      // insert synthetic item
       db.prepare(
         `
         INSERT INTO nf_itens_fiscal (nf_id, xProd, qCom, uCom, vUnCom, vProd)

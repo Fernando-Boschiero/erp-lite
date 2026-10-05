@@ -3,32 +3,8 @@ let nfData = null;
 let pedidos = [];
 let cotacoes = [];
 let cotacoesSelecionadas = [];
-const tiposComPedido = [
-  "PC - Aluguel de Equipamento",
-  "PC - Ativo",
-  "PC - Benefícios",
-  "PC - Carta de Correção",
-  "PC - Complementar",
-  "PC - Contas de Consumo",
-  "PC - Consumível Fábrica",
-  "PC - Consumível Pessoal",
-  "PC - Demonstração",
-  "PC - Despachante",
-  "PC - Devolução",
-  "PC - Embalagem",
-  "PC - Entrada",
-  "PC - Frete",
-  "PC - Garantia",
-  "PC - Industrialização",
-  "PC - Manutenção",
-  "PC - Matéria Prima",
-  "PC - Material de Escritório",
-  "PC - Medicina do Trabalho",
-  "PC - Serviço",
-  "PC - TI",
-  "PC - Veículos",
-];
-const tiposComCotacao = ["Produto Acabado", "Serviço - Venda"];
+let tiposComPedido = [];
+let tiposComCotacao = [];
 
 /* ─── GET ID FROM URL ─── */
 const urlParams = new URLSearchParams(window.location.search);
@@ -499,9 +475,60 @@ if (btnAdicionarCotacao) {
   });
 }
 
+async function carregarTiposNF() {
+  const res = await fetch("http://localhost:3000/tipos-nf");
+  const tipos = await res.json();
+
+  const tiposGeral = tipos.filter((t) => t.categoria === "Geral");
+  const tiposPC = tipos.filter((t) => t.categoria === "PC");
+  const tiposCOT = tipos.filter((t) => t.categoria === "COT");
+
+  // update dynamic arrays
+  tiposComPedido = tiposPC.map((t) => t.descricao);
+  tiposComCotacao = tiposCOT.map((t) => t.descricao);
+
+  const select = document.getElementById("tipoNF");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Selecione o tipo...</option>`;
+
+  const groupGeral = document.createElement("optgroup");
+  groupGeral.label = "Geral";
+  tiposGeral.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupGeral.appendChild(option);
+  });
+
+  const groupPC = document.createElement("optgroup");
+  groupPC.label = "Vinculado a Pedido de Compra";
+  tiposPC.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupPC.appendChild(option);
+  });
+
+  const groupCOT = document.createElement("optgroup");
+  groupCOT.label = "Vinculado a Cotação";
+  tiposCOT.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupCOT.appendChild(option);
+  });
+
+  select.appendChild(groupGeral);
+  select.appendChild(groupPC);
+  select.appendChild(groupCOT);
+}
+
 /* ─── INIT ─── */
 if (!nfId) {
   alert("Nota fiscal não encontrada.");
 } else {
-  Promise.all([carregarPedidos(), carregarCotacoes()]).then(() => carregarNF());
+  Promise.all([carregarPedidos(), carregarCotacoes(), carregarTiposNF()]).then(
+    () => carregarNF(),
+  );
 }

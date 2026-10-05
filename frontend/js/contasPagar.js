@@ -1,5 +1,6 @@
 /* ─── STATE ─── */
 let allNFs = [];
+let pedidos = [];
 
 /* ─── ELEMENTS ─── */
 const searchInput = document.getElementById("searchInput");
@@ -215,6 +216,8 @@ function limparModal() {
   document.getElementById("lancValor").value = "";
   document.getElementById("lancDataEmissao").value = "";
   document.getElementById("lancVencimento").value = "";
+  if (lancPedido) lancPedido.value = "";
+  if (vinculoPedidoLancamento) vinculoPedidoLancamento.style.display = "none";
 }
 
 if (btnSalvarLancamento) {
@@ -223,6 +226,8 @@ if (btnSalvarLancamento) {
     const tipo = document.getElementById("lancTipo").value;
     const valorRaw = document.getElementById("lancValor").value;
     const dVenc = document.getElementById("lancVencimento").value;
+    const dhEmi = document.getElementById("lancDataEmissao").value;
+    const pedidoId = lancPedido?.value || null;
 
     if (!xNome) {
       alert("Por favor, informe o fornecedor/descrição.");
@@ -230,6 +235,10 @@ if (btnSalvarLancamento) {
     }
     if (!tipo) {
       alert("Por favor, selecione o tipo.");
+      return;
+    }
+    if (tiposComPedido.includes(tipo) && !pedidoId) {
+      alert("Por favor, selecione o pedido de compra.");
       return;
     }
     if (!dVenc) {
@@ -240,12 +249,17 @@ if (btnSalvarLancamento) {
     const valor =
       parseFloat(valorRaw.replace(/[^\d,]/g, "").replace(",", ".")) || 0;
 
-    const dhEmi = document.getElementById("lancDataEmissao").value;
-
     const result = await fetch("http://localhost:3000/notas-fiscais/manual", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ xNome, tipo, valor, dVenc, dhEmi }),
+      body: JSON.stringify({
+        xNome,
+        tipo,
+        valor,
+        dVenc,
+        dhEmi,
+        pedido_id: pedidoId ? parseInt(pedidoId) : null,
+      }),
     });
 
     const data = await result.json();
@@ -257,6 +271,100 @@ if (btnSalvarLancamento) {
       await carregarNFs();
     }
   });
+}
+
+let tiposComPedido = [];
+
+/* ─── LOAD PEDIDOS ─── */
+async function carregarPedidosLancamento() {
+  const res = await fetch("http://localhost:3000/pedidos");
+  pedidos = await res.json();
+  const lancPedido = document.getElementById("lancPedido");
+  if (!lancPedido) return;
+  pedidos.forEach((p) => {
+    const option = document.createElement("option");
+    option.value = p.id;
+    option.textContent = `${p.num_pedido} — ${p.razao_social}`;
+    option.dataset.fornecedor = p.razao_social;
+    option.dataset.aplicacao = p.aplicacao ?? "";
+    lancPedido.appendChild(option);
+  });
+}
+
+const lancTipo = document.getElementById("lancTipo");
+const vinculoPedidoLancamento = document.getElementById(
+  "vinculo-pedido-lancamento",
+);
+const lancPedido = document.getElementById("lancPedido");
+const lancFornecedor = document.getElementById("lancFornecedor");
+
+if (lancTipo) {
+  lancTipo.addEventListener("change", () => {
+    if (tiposComPedido.includes(lancTipo.value)) {
+      vinculoPedidoLancamento.style.display = "block";
+    } else {
+      vinculoPedidoLancamento.style.display = "none";
+      lancPedido.value = "";
+    }
+  });
+}
+
+if (lancPedido) {
+  lancPedido.addEventListener("change", () => {
+    const selected = lancPedido.options[lancPedido.selectedIndex];
+    if (selected && selected.value) {
+      lancFornecedor.value = selected.dataset.fornecedor || "";
+    }
+  });
+}
+
+async function carregarTiposNF() {
+  const res = await fetch("http://localhost:3000/tipos-nf");
+  const tipos = await res.json();
+
+  const tiposGeral = tipos.filter((t) => t.categoria === "Geral");
+  const tiposPC = tipos.filter((t) => t.categoria === "PC");
+  const tiposCOT = tipos.filter((t) => t.categoria === "COT");
+
+  tiposComPedido = tiposPC.map((t) => t.descricao);
+
+  const select = document.getElementById("lancTipo");
+  if (!select) return;
+
+  // keep existing hardcoded options structure but clear dynamic optgroups
+  const existingOptions = select.querySelector('option[value=""]');
+  select.innerHTML = `<option value="">Selecione o tipo...</option>`;
+
+  const groupGeral = document.createElement("optgroup");
+  groupGeral.label = "Geral";
+  tiposGeral.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupGeral.appendChild(option);
+  });
+
+  const groupPC = document.createElement("optgroup");
+  groupPC.label = "Vinculado a Pedido de Compra";
+  tiposPC.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupPC.appendChild(option);
+  });
+
+  const groupCOT = document.createElement("optgroup");
+  groupCOT.label = "Vinculado a Cotação";
+  tiposCOT.forEach((t) => {
+    const option = document.createElement("option");
+    option.value = t.descricao;
+    option.textContent = t.descricao;
+    groupCOT.appendChild(option);
+  });
+
+  select.appendChild(groupGeral);
+  select.appendChild(groupPC);
+  select.appendChild(groupCOT);
 }
 
 /* ─── EVENT LISTENERS ─── */
@@ -275,3 +383,5 @@ if (btnLimparFiltro) {
 /* ─── INIT ─── */
 setDefaultDates();
 carregarNFs();
+carregarPedidosLancamento();
+carregarTiposNF();

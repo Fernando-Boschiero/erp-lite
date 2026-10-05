@@ -273,6 +273,7 @@ function showTooltip(dup, e) {
 function hideTooltip() {
   tooltip.style.display = "none";
   tooltipDupId = null;
+  tooltipIsProjecao = false;
 }
 
 /* ─── MARK AS PAGA / REABRIR ─── */

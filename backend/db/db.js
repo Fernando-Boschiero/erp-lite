@@ -444,4 +444,79 @@ if (!counter) {
   ).run();
 }
 
+// TIPOS_NF
+db.prepare(
+  `
+  CREATE TABLE IF NOT EXISTS tipos_nf (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    descricao TEXT NOT NULL,
+    categoria TEXT NOT NULL CHECK (categoria IN ('Geral', 'PC', 'COT')),
+    UNIQUE(descricao)
+  )
+`,
+).run();
+
+// pre-populate with existing tipos if table is empty
+const tiposExistentes = db
+  .prepare(`SELECT COUNT(*) as count FROM tipos_nf`)
+  .get();
+if (tiposExistentes.count === 0) {
+  const tiposIniciais = [
+    // Geral
+    { descricao: "Geral - Aluguel de Equipamento", categoria: "Geral" },
+    { descricao: "Geral - Ativo", categoria: "Geral" },
+    { descricao: "Geral - Benefícios", categoria: "Geral" },
+    { descricao: "Geral - Carta de Correção", categoria: "Geral" },
+    { descricao: "Geral - Complementar", categoria: "Geral" },
+    { descricao: "Geral - Contas de Consumo", categoria: "Geral" },
+    { descricao: "Geral - Consumível Fábrica", categoria: "Geral" },
+    { descricao: "Geral - Consumível Pessoal", categoria: "Geral" },
+    { descricao: "Geral - Demonstração", categoria: "Geral" },
+    { descricao: "Geral - Despachante", categoria: "Geral" },
+    { descricao: "Geral - Devolução", categoria: "Geral" },
+    { descricao: "Geral - Embalagem", categoria: "Geral" },
+    { descricao: "Geral - Entrada", categoria: "Geral" },
+    { descricao: "Geral - Frete", categoria: "Geral" },
+    { descricao: "Geral - Garantia", categoria: "Geral" },
+    { descricao: "Geral - Industrialização", categoria: "Geral" },
+    { descricao: "Geral - Manutenção", categoria: "Geral" },
+    { descricao: "Geral - Material de Escritório", categoria: "Geral" },
+    { descricao: "Geral - Medicina do Trabalho", categoria: "Geral" },
+    { descricao: "Geral - Serviço", categoria: "Geral" },
+    { descricao: "Geral - TI", categoria: "Geral" },
+    { descricao: "Geral - Veículos", categoria: "Geral" },
+    // PC
+    { descricao: "PC - Aluguel de Equipamento", categoria: "PC" },
+    { descricao: "PC - Ativo", categoria: "PC" },
+    { descricao: "PC - Benefícios", categoria: "PC" },
+    { descricao: "PC - Carta de Correção", categoria: "PC" },
+    { descricao: "PC - Complementar", categoria: "PC" },
+    { descricao: "PC - Contas de Consumo", categoria: "PC" },
+    { descricao: "PC - Consumível Fábrica", categoria: "PC" },
+    { descricao: "PC - Consumível Pessoal", categoria: "PC" },
+    { descricao: "PC - Demonstração", categoria: "PC" },
+    { descricao: "PC - Despachante", categoria: "PC" },
+    { descricao: "PC - Devolução", categoria: "PC" },
+    { descricao: "PC - Embalagem", categoria: "PC" },
+    { descricao: "PC - Entrada", categoria: "PC" },
+    { descricao: "PC - Frete", categoria: "PC" },
+    { descricao: "PC - Garantia", categoria: "PC" },
+    { descricao: "PC - Industrialização", categoria: "PC" },
+    { descricao: "PC - Manutenção", categoria: "PC" },
+    { descricao: "PC - Matéria Prima", categoria: "PC" },
+    { descricao: "PC - Material de Escritório", categoria: "PC" },
+    { descricao: "PC - Medicina do Trabalho", categoria: "PC" },
+    { descricao: "PC - Serviço", categoria: "PC" },
+    { descricao: "PC - TI", categoria: "PC" },
+    { descricao: "PC - Veículos", categoria: "PC" },
+    // COT
+    { descricao: "Produto Acabado", categoria: "COT" },
+    { descricao: "Serviço - Venda", categoria: "COT" },
+  ];
+  const insertTipo = db.prepare(
+    `INSERT OR IGNORE INTO tipos_nf (descricao, categoria) VALUES (?, ?)`,
+  );
+  tiposIniciais.forEach((t) => insertTipo.run(t.descricao, t.categoria));
+}
+
 module.exports = db;

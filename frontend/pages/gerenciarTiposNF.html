@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="../css/formFornecedores.css" />
+    <title>Gerenciar Tipos de NF</title>
+  </head>
+  <body>
+    <div class="gerenciamento-container">
+      <h1>GERENCIAR TIPOS DE NOTA FISCAL</h1>
+
+      <!-- ADD NEW TIPO -->
+      <h2>ADICIONAR NOVO TIPO</h2>
+      <hr />
+      <div class="container-multiple-inputs">
+        <div class="input-group">
+          <label for="novoTipoCategoria">CATEGORIA</label>
+          <select id="novoTipoCategoria">
+            <option value="">Selecione...</option>
+            <option value="Geral">Geral</option>
+            <option value="PC">PC (Pedido de Compra)</option>
+            <option value="COT">COT (Cotação)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="novoTipoDescricao">DESCRIÇÃO</label>
+          <input
+            type="text"
+            id="novoTipoDescricao"
+            placeholder="Ex: Manutenção Predial" />
+        </div>
+      </div>
+      <button type="button" id="btn-adicionar-tipo">ADICIONAR</button>
+
+      <br /><br />
+
+      <!-- TIPOS GERAL -->
+      <h2>TIPOS GERAL</h2>
+      <hr />
+      <div class="table-wrapper">
+        <table id="tabela-tipos-geral">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Apagar</th>
+            </tr>
+          </thead>
+          <tbody id="resultado-tipos-geral"></tbody>
+        </table>
+      </div>
+
+      <br />
+
+      <!-- TIPOS PC -->
+      <h2>TIPOS PC (PEDIDO DE COMPRA)</h2>
+      <hr />
+      <div class="table-wrapper">
+        <table id="tabela-tipos-pc">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Apagar</th>
+            </tr>
+          </thead>
+          <tbody id="resultado-tipos-pc"></tbody>
+        </table>
+      </div>
+
+      <!-- TIPOS COT -->
+      <h2>TIPOS COT (COTAÇÃO)</h2>
+      <hr />
+      <div class="table-wrapper">
+        <table id="tabela-tipos-cot">
+          <thead>
+            <tr>
+              <th>Descrição</th>
+              <th>Apagar</th>
+            </tr>
+          </thead>
+          <tbody id="resultado-tipos-cot"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script src="../js/sharedFornecedores.js"></script>
+    <script src="../js/gerenciarTiposNF.js"></script>
+  </body>
+</html>

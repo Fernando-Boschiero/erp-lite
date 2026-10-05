@@ -377,7 +377,7 @@ button {
   cursor: pointer;
   padding: 10px;
   border-radius: 5px;
-  margin: 0 5px 0 5px;
+  margin: 5px 5px 0 5px;
   background: linear-gradient(
     to bottom right,
     var(--primary-button-gradient) 70%,
@@ -481,6 +481,10 @@ button:hover {
   cursor: pointer;
   font-size: 1rem;
   padding: 2px 4px;
+}
+
+.delete-icon {
+  cursor: pointer;
 }
 
 /* CSS FOR CADASTRO DE NOTA FISCAL */
