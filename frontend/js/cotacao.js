@@ -716,7 +716,7 @@ function getItensFromTable() {
           .replace(/\./g, "")
           .replace(",", "."),
       ) || 0,
-    descricao: row.cells[3]?.textContent || "",
+    descricao: row.cells[3]?.innerHTML || "",
     unidade: row.cells[4]?.textContent || "",
     val_unitario:
       parseFloat(

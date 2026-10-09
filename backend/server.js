@@ -1029,7 +1029,7 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
                 : "";
               return `${p.percentual}% ${p.descricao.toLowerCase()}${valorStr}${gatilhoStr}${dataStr}`;
             })
-            .join(" + ")
+            .join("<br>")
         : cotacao.cond_pagamento || "-"; // fallback to old text field
 
     const totalGeral = itens.reduce((sum, item) => sum + (item.total ?? 0), 0);
@@ -1097,6 +1097,26 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     }
 
     // full HTML document for wkhtmltopdf to render
+
+    function fixQuillLists(html) {
+      if (!html) return html;
+
+      // replace <ol> containing data-list="bullet" items with <ul>
+      // and remove the ql-ui spans
+      return html
+        .replace(/<ol>([\s\S]*?)<\/ol>/g, (match, content) => {
+          if (content.includes('data-list="bullet"')) {
+            return `<ul>${content}</ul>`;
+          }
+          return match;
+        })
+        .replace(/<span class="ql-ui"[^>]*><\/span>/g, "");
+    }
+
+    const descricaoEquipamentos = fixQuillLists(cotacao.descricao_equipamentos);
+    const condicoesProposta = fixQuillLists(cotacao.condicoes_proposta);
+    const condicoesGerais = fixQuillLists(cotacao.condicoes_gerais);
+
     const html = `
       <!DOCTYPE html>
       <html lang="pt">
@@ -1128,24 +1148,28 @@ app.get("/cotacoes/:id/pdf", async (req, res) => {
     font-style: italic;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #000; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', Arial, sans-serif; font-size: 12pt; color: #000; }
 
-  h1 { font-size: 16pt; text-align: center; margin-bottom: 8mm; }
-  h2 { font-size: 11pt; margin-top: 6mm; margin-bottom: 2mm; }
-  hr { border: none; border-top: 1px solid #ccc; margin-bottom: 4mm; }
+h1 { font-size: 18pt; text-align: center; margin-bottom: 8mm; }
+h2 { font-size: 13pt; margin-top: 6mm; margin-bottom: 2mm; }
+hr { border: none; border-top: 1px solid #ccc; margin-bottom: 4mm; }
 
-  .field label { font-size: 8pt; font-weight: bold; display: block; margin-top: 3mm; }
-  .field p { font-size: 10pt; }
+.field label { font-size: 10pt; font-weight: bold; display: block; margin-top: 3mm; }
+.field p { font-size: 12pt; }
 
-  table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 9pt; }
-  th { background: #f0f0f0; padding: 2mm 3mm; text-align: left; border: 1px solid #ccc; font-size: 8pt; }
-  td { padding: 2mm 3mm; border: 1px solid #ccc; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 13pt; }
+th { background: #f0f0f0; padding: 2mm 3mm; text-align: left; border: 1px solid #ccc; font-size: 10pt; }
+td { padding: 2mm 3mm; border: 1px solid #ccc; }
 
-  .total-geral { text-align: right; font-weight: bold; font-size: 11pt; margin-bottom: 6mm; }
-  .quill-content { margin-bottom: 6mm; line-height: 1.5; }
-  .quill-content p { margin-bottom: 2mm; }
-  .quill-content ul, .quill-content ol { padding-left: 5mm; margin-bottom: 2mm; }
+.total-geral { text-align: right; font-weight: bold; font-size: 13pt; margin-bottom: 6mm; }
+.quill-content { margin-bottom: 6mm; line-height: 1.2; }
+.quill-content p { margin-bottom: 0; margin-top: 0; }
+.quill-content ul, .quill-content ol { padding-left: 10mm; margin-bottom: 2mm; }
+
+.quill-content ul { list-style-type: disc !important; padding-left: 8mm; }
+.quill-content ol { list-style-type: decimal !important; padding-left: 8mm; }
+.quill-content li { margin-bottom: 1mm; }
 
   .ql-align-justify { text-align: justify; }
 .ql-align-center { text-align: center; }
@@ -1197,19 +1221,19 @@ body {
 <table style="width:100%; border-collapse: collapse; border: none; margin-bottom: 6mm;">
   <!-- Row 1: Cliente and CNPJ side by side -->
   <tr>
-    <td style="border:none; width:50%; vertical-align:top; padding-right:5mm;">
-      <div style="font-size:8pt; font-weight:bold;">CLIENTE</div>
-      <div>${cotacao.cliente ?? "-"}</div>
-    </td>
-    <td style="border:none; width:50%; vertical-align:top;">
-      ${
-        cotacao.cliente_cnpj
-          ? `
-      <div style="font-size:8pt; font-weight:bold;">CNPJ</div>
-      <div>${cotacao.cliente_cnpj}</div>`
-          : ""
-      }
-    </td>
+<td style="border:none; width:50%; vertical-align:top; padding-right:5mm;">
+  <div style="font-size:10pt; font-weight:bold;">CLIENTE</div>
+  <div style="font-size:12pt;">${cotacao.cliente ?? "-"}</div>
+</td>
+<td style="border:none; width:50%; vertical-align:top;">
+  ${
+    cotacao.cliente_cnpj
+      ? `
+  <div style="font-size:10pt; font-weight:bold;">CNPJ</div>
+  <div style="font-size:12pt;">${cotacao.cliente_cnpj}</div>`
+      : ""
+  }
+</td>
   </tr>
   <!-- Row 2: Full address -->
   ${
@@ -1217,8 +1241,8 @@ body {
       ? `
   <tr>
     <td colspan="2" style="border:none; vertical-align:top; padding-top:2mm;">
-      <div style="font-size:8pt; font-weight:bold;">ENDEREÇO</div>
-      <div>${cotacao.cliente_rua}${cotacao.cliente_bairro ? `, ${cotacao.cliente_bairro}` : ""}, ${cotacao.cliente_cidade ?? ""}${cotacao.cliente_estado ? ` - ${cotacao.cliente_estado}` : ""}${cotacao.cliente_cep ? `, ${formatCEP(cotacao.cliente_cep)}` : ""}${cotacao.cliente_pais ? ` — ${cotacao.cliente_pais}` : ""}</div>
+      <div style="font-size:10pt; font-weight:bold;">ENDEREÇO</div>
+      <div style="font-size:12pt;">${cotacao.cliente_rua}${cotacao.cliente_bairro ? `, ${cotacao.cliente_bairro}` : ""}, ${cotacao.cliente_cidade ?? ""}${cotacao.cliente_estado ? ` - ${cotacao.cliente_estado}` : ""}${cotacao.cliente_cep ? `, ${formatCEP(cotacao.cliente_cep)}` : ""}${cotacao.cliente_pais ? ` — ${cotacao.cliente_pais}` : ""}</div>
     </td>
   </tr>`
       : ""
@@ -1226,7 +1250,7 @@ body {
   <!-- Row 3: Contacts -->
   <tr>
     <td colspan="2" style="border:none; vertical-align:top; padding-top:2mm;">
-      <div style="font-size:8pt; font-weight:bold;">CONTATO(S)</div>
+      <div style="font-size:10pt; font-weight:bold;">CONTATO(S)</div>
       ${
         contatosCotacao.length > 0
           ? contatosCotacao
@@ -1251,39 +1275,41 @@ body {
       <hr>
 <table style="width:100%; border-collapse: collapse; border: none;">
   <tr>
-    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">PRAZO DE ENTREGA (dias após aceite)</div>
-      <div>${cotacao.prazo_entrega ?? "-"}</div>
-    </td>
-    <td style="width:50%; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">VALIDADE DA PROPOSTA</div>
-      <div>${cotacao.validade_proposta ?? "-"}</div>
+    <td colspan="2" style="vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 10pt; font-weight: bold;">PRAZO DE ENTREGA (dias após aceite)</div>
+      <div style="font-size:12pt;">${cotacao.prazo_entrega ?? "-"}</div>
     </td>
   </tr>
   <tr>
     <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">INSTALAÇÃO</div>
-      <div>${cotacao.instalacao ? cotacao.instalacao.charAt(0).toUpperCase() + cotacao.instalacao.slice(1) : "Cliente"}</div>
+      <div style="font-size: 10pt; font-weight: bold;">INSTALAÇÃO</div>
+      <div style="font-size:12pt;">${cotacao.instalacao ? cotacao.instalacao.charAt(0).toUpperCase() + cotacao.instalacao.slice(1) : "Cliente"}</div>
     </td>
     <td style="width:50%; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">FRETE</div>
-      <div>${cotacao.frete ? cotacao.frete.charAt(0).toUpperCase() + cotacao.frete.slice(1) : "Cliente"}</div>
+      <div style="font-size: 10pt; font-weight: bold;">FRETE</div>
+      <div style="font-size:12pt;">${cotacao.frete ? cotacao.frete.charAt(0).toUpperCase() + cotacao.frete.slice(1) : "Cliente"}</div>
     </td>
   </tr>
   <tr>
     <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">MOEDA</div>
-      <div>${cotacao.moeda ?? "BRL"}</div>
+      <div style="font-size: 10pt; font-weight: bold;">MOEDA</div>
+      <div style="font-size:12pt;">${cotacao.moeda ?? "BRL"}</div>
     </td>
     <td style="width:50%; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA DE ACEITE</div>
-      <div>${formatarData(cotacao.data_aceite)}</div>
+      <div style="font-size: 10pt; font-weight: bold;">DATA DE ACEITE</div>
+      <div style="font-size:12pt;">${formatarData(cotacao.data_aceite)}</div>
     </td>
   </tr>
   <tr>
-    <td style="width:50%; vertical-align: top; padding-right: 3mm; border: none;">
-      <div style="font-size: 8pt; font-weight: bold; margin-top: 3mm;">DATA PREVISTA DE ENTREGA</div>
-      <div>${cotacao.data_prevista ?? "-"}</div>
+    <td colspan="2"style="vertical-align: top; padding-right: 3mm; border: none;">
+      <div style="font-size: 10pt; font-weight: bold;">DATA PREVISTA DE ENTREGA</div>
+      <div style="font-size:12pt;">${cotacao.data_prevista ?? "-"}</div>
+    </td>
+  </tr>
+  <tr>
+      <td style="width:50%; vertical-align: top; border: none;">
+      <div style="font-size: 10pt; font-weight: bold;">VALIDADE DA PROPOSTA</div>
+      <div style="font-size:12pt;">${cotacao.validade_proposta ?? "15 Dias"}</div>
     </td>
   </tr>
 </table>
@@ -1295,10 +1321,10 @@ body {
 <!-- CONDIÇÕES DE PAGAMENTO + TOTAL GERAL aligned left -->
 <table style="width:100%; border-collapse: collapse; border: none; margin-top: 4mm;">
   <tr>
-    <td style="border: none; width: 50%; vertical-align: top;">
-      <div style="font-size: 8pt; font-weight: bold;">CONDIÇÕES DE PAGAMENTO</div>
-      <div style="font-size: 9pt; margin-top: 1mm;">${pagamentosResumo}</div>
-      <div style="font-size: 11pt; font-weight: bold; color: #1a5c35; margin-top: 3mm;">
+    <td style="border: none; width: 100%; vertical-align: top;">
+      <div style="font-size: 10pt; font-weight: bold;">CONDIÇÕES DE PAGAMENTO</div>
+      <div style="font-size: 13pt; margin-top: 1mm;">${pagamentosResumo}</div>
+      <div style="font-size: 13pt; font-weight: bold; color: #1a5c35; margin-top: 3mm;">
         TOTAL GERAL: ${totalGeralFormatado}
       </div>
     </td>
@@ -1314,7 +1340,7 @@ body {
 
         <h2>DESCRIÇÃO DOS EQUIPAMENTOS</h2>
         <hr>
-        <div class="quill-content">${cotacao.descricao_equipamentos ?? ""}</div>
+        <div class="quill-content">${descricaoEquipamentos ?? ""}</div>
 
         <h2>PROPOSTA COMERCIAL</h2>
         <hr>
@@ -1338,22 +1364,22 @@ body {
 
         <h2>CONDIÇÕES DA PROPOSTA</h2>
         <hr>
-        <div class="quill-content">${cotacao.condicoes_proposta ?? ""}</div>
+        <div class="quill-content">${condicoesProposta ?? ""}</div>
 
         <h2>RESPONSÁVEL PELA COTAÇÃO</h2>
 <hr>
 <table style="width:100%; border-collapse: collapse; border: none;">
   <tr>
     <td style="width:33%; padding-right: 5mm; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold;">RESPONSÁVEL</div>
+      <div style="font-size: 10pt; font-weight: bold;">RESPONSÁVEL</div>
       <div>${cotacao.comprador ?? "-"}</div>
     </td>
     <td style="width:33%; padding-right: 5mm; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold;">EMAIL</div>
+      <div style="font-size: 10pt; font-weight: bold;">EMAIL</div>
       <div>${cotacao.comprador_email ?? "-"}</div>
     </td>
     <td style="width:33%; vertical-align: top; border: none;">
-      <div style="font-size: 8pt; font-weight: bold;">TELEFONE</div>
+      <div style="font-size: 10pt; font-weight: bold;">TELEFONE</div>
       <div>${cotacao.comprador_telefone ?? "-"}</div>
     </td>
   </tr>
@@ -1361,7 +1387,7 @@ body {
 
         <h2>CONDIÇÕES GERAIS DE VENDA</h2>
         <hr>
-        <div class="quill-content">${cotacao.condicoes_gerais ?? ""}</div>
+        <div class="quill-content" style="font-size: 10pt;">${condicoesGerais ?? ""}</div>
 
       </body>
       </html>
@@ -1375,14 +1401,14 @@ body {
     const headerHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
-<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;">
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 10pt;">
   <table style="width:100%; border-bottom: 1px solid #ccc; padding-bottom: 2mm;">
     <tr>
       <td style="text-align: left; vertical-align: middle; width: 30%;">
         <img src="${logoFilePath}" style="height: 14mm;" />
       </td>
       <td style="text-align: right; vertical-align: middle; font-size: 7pt;">
-        <strong style="font-size: 9pt;">VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
+        <strong style="font-size: 13pt;">VEIKON EQUIPAMENTOS E SERVIÇOS LTDA</strong><br>
         CNPJ: 19.309.792/0001-09 | IE: 714.079.490.113<br>
         Rua Joana Fabri Thomé 442, Santa Claudina — Vinhedo - SP, CEP: 13284-432<br>
         Tel: (19) 3846-6802 | Email: comercial@veikon.com.br
@@ -1419,7 +1445,7 @@ function subst() {
 }
 </script>
 </head>
-<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 8pt;" onload="subst()">
+<body style="margin:0; padding: 0 10mm; font-family: Arial, sans-serif; font-size: 10pt;" onload="subst()">
   <table style="width:100%; border-top: 1px solid #ccc; padding-top: 2mm;">
     <tr>
       <td style="text-align: left; vertical-align: top;">
